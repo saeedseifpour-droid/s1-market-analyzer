@@ -51,11 +51,15 @@ export interface InputMetric {
   code: string;
   value: number | string;
   unit: string;
-  scoreContribution: number; // -10 to +10 or 0-100
+  scoreContribution: number; // 0 to 10
   status: 'bullish' | 'bearish' | 'neutral';
   weight: number;
   lastUpdated: string;
   description: string;
+  source: string;
+  sourceReference?: string;
+  extractedFrom?: string;
+  timeWindow?: string;
 }
 
 export interface FundItem {

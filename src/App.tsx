@@ -204,8 +204,12 @@ export default function App() {
     setSignal(updatedSignal);
   };
 
-  const handleApplyFreshSignal = (freshSignal: SystemS1Signal) => {
+  const handleApplyFreshSignal = (freshSignal: SystemS1Signal, newInputs?: InputMetric[]) => {
     setSignal(freshSignal);
+    if (newInputs && newInputs.length > 0) {
+      setInputs(newInputs);
+      handleRecalculateEngine(newInputs);
+    }
     // Add to history log
     const newLog: SystemHistoryLog = {
       id: `log-${Date.now()}`,
@@ -314,6 +318,7 @@ export default function App() {
         onApplyResults={handleApplyFreshSignal}
         currentSignal={signal}
         marketScores={marketScores}
+        inputs={inputs}
       />
 
       <TelegramModal
@@ -321,6 +326,9 @@ export default function App() {
         onClose={() => setIsTelegramModalOpen(false)}
         signal={signal}
         marketScores={marketScores}
+        inputs={inputs}
+        assets={portfolioAssets}
+        trades={portfolioTrades}
         telegramConfig={telegramConfig}
       />
 
@@ -329,6 +337,7 @@ export default function App() {
         onClose={() => setIsDailyReportModalOpen(false)}
         signal={signal}
         marketScores={marketScores}
+        inputs={inputs}
         assets={portfolioAssets}
         trades={portfolioTrades}
         sri={initialSRI}
