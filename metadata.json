@@ -2,5 +2,7 @@
   "name": "سامانه امتیازدهی بازار S1 (System S1)",
   "description": "سامانه تحلیل روزانه، امتیازدهی بازارها (بورس، طلا، ارز، کریپتو)، تخصیص صندوق‌ها و سیگنال تصمیم‌گیری S1 با قابلیت ارسال به تلگرام",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
