@@ -1,0 +1,1589 @@
+import {
+  MarketScoreItem,
+  InputMetric,
+  FundItem,
+  SystemS1Signal,
+  TelegramConfig,
+  SystemHistoryLog,
+  PortfolioSummary,
+  PortfolioAssetItem,
+  PortfolioHistoryPoint,
+  PortfolioTradeItem,
+  NewsItem,
+  SystemicRiskItem,
+  AiDailySummary,
+  SRIModel,
+  DailyChecklistItem,
+  S1V13RulebookSection,
+} from './types';
+
+export const initialMarketScores: MarketScoreItem[] = [
+  {
+    id: 'bourse',
+    name: 'بورس ایران',
+    nameEn: 'Iran Stock Exchange (TSETMC)',
+    symbol: 'TSE',
+    icon: 'show_chart',
+    score: 82,
+    sentiment: 'Bullish',
+    trafficLight: 'green',
+    trafficLightLabel: '🟢 چراغ سبز (۸۲/۱۰۰) - بسیار قوی؛ مجاز به خرید جدید یا افزایش پله‌ای',
+    primaryColor: '#10b981',
+    metrics: [
+      { label: 'ورود پول حقیقی:', value: '+۱,۲۴۰ میلیارد ت', status: 'positive' },
+      { label: 'ارزش معاملات خرد:', value: '۸,۴۵۰ میلیارد ت', status: 'positive' },
+      { label: 'قدرت خریدار:', value: '۱.۳۸ (سرانه مثبت)', status: 'positive' },
+      { label: 'اقتصاد کلان:', value: 'تثبیت توافقی', status: 'neutral' },
+    ],
+    description: 'طبق فرمول ۱۰۰ امتیازی S1، ورود ۳ روز متوالی پول حقیقی و عبور ارزش معاملات از میانگین ماهانه، شرط چراغ سبز را محقق کرده است.',
+    threeConfirmations: {
+      criterion1: { name: 'ورود پول حقیقی (حداقل ۳ روز متوالی)', passed: true, note: '۳ روز پیوسته ورود پول به سهام شاخص‌ساز و دلاری' },
+      criterion2: { name: 'ارزش معاملات خرد (بیشتر از میانگین ۱ ماهه)', passed: true, note: '۸.۴۵ همت در برابر میانگین ماهانه ۶.۲ همت' },
+      criterion3: { name: 'قدرت خریدار حقیقی (سرانه خرید به فروش > ۱)', passed: true, note: 'سرانه خرید ۴۸ م.ت در برابر سرانه فروش ۳۵ م.ت (نسبت ۱.۳۸)' },
+      isConfirmed: true,
+    },
+    weightBreakdown: [
+      { variable: 'ورود پول حقیقی (توالی ۳ روز)', weight: 30, scoreAchieved: 26, source: 'TSETMC / دیتابورس', evaluation: 'تایید ۳ روز متوالی با حجم مثبت' },
+      { variable: 'ارزش معاملات خرد', weight: 20, scoreAchieved: 18, source: 'TSETMC / دیتابورس', evaluation: 'بیشتر از میانگین یک ماه گذشته' },
+      { variable: 'قدرت خریدار حقیقی (سرانه خرید/فروش)', weight: 15, scoreAchieved: 13, source: 'دیتابورس / تریدرز آرنا', evaluation: 'نسبت ۱.۳۸ و بزرگتر از ۱' },
+      { variable: 'اقتصاد کلان (نرخ بهره، ارز توافقی، کامودیتی)', weight: 20, scoreAchieved: 15, source: 'گزارش‌های رسمی اقتصادی', evaluation: 'کاهش شکاف ارزی نیما با آزاد' },
+      { variable: 'تحلیل تکنیکال (ابزار زمان‌بندی Timing)', weight: 10, scoreAchieved: 8, source: 'ره‌آورد ۳۶۵ / چارت زنده', evaluation: 'تثبیت بالای میانگین متحرک ۵۰ روزه' },
+      { variable: 'اخبار سیاسی و محیطی', weight: 5, scoreAchieved: 2, source: 'خبرگزاری‌های رسمی معتبر', evaluation: 'تنش‌های منطقه‌ای تحت کنترل' },
+    ],
+    details: {
+      technicalScore: 80,
+      fundamentalScore: 75,
+      flowScore: 87,
+      sentimentScore: 86,
+      analysisSummary: 'شاخص کل با تایید همزمان ۳ معیار مستقل (ورود پول، ارزش معاملات، قدرت سرانه) در فاز صعودی قرار گرفته و طبق قانون سقف ۶۰٪ پورتفوی S1، ورود پله‌های ۲۰ درصدی مجاز است.'
+    }
+  },
+  {
+    id: 'gold',
+    name: 'طلا و سکه (Gold)',
+    nameEn: 'Gold & Coins Market',
+    symbol: 'GOLD',
+    icon: 'monetization_on',
+    score: 90,
+    sentiment: 'Strong Bull',
+    trafficLight: 'green',
+    trafficLightLabel: '🟢 چراغ سبز (۹۰/۱۰۰) - وضعیت بسیار قوی؛ اولویت ۸۰٪ در صندوق‌های شمش (عیار)',
+    primaryColor: '#ffb77d',
+    metrics: [
+      { label: 'انس جهانی طلا:', value: '۲,۷۴۵ دلار (صعودی)', status: 'positive' },
+      { label: 'دلار آزاد داخلی:', value: 'روند صعودی آرام', status: 'positive' },
+      { label: 'حباب سکه امامی:', value: '۱۹.۵٪ (ترجیح شمش)', status: 'warning' },
+      { label: 'جریان پول صندوق‌ها:', value: '+۴۲۰ میلیارد ت', status: 'positive' },
+    ],
+    description: 'کلاس دارایی طلا با کسب امتیاز ۹۰ دارای بالاترین جذابیت است. طبق قانون ستون اصلی طلا، حداقل ۸۰٪ از بخش طلای پورتفو باید به صندوق‌های شمش‌محور (عیار) اختصاص یابد.',
+    threeConfirmations: {
+      criterion1: { name: 'روند صعودی اونس جهانی طلا', passed: true, note: 'تثبیت بالای کانال صعودی و تضعیف بازده اوراق قرضه آمریکا' },
+      criterion2: { name: 'جریان پول ورودی به صندوق‌های طلا', passed: true, note: 'ورود مستمر پول به عیار، کهربا و طلا در بورس کالا' },
+      criterion3: { name: 'جهت حرکت دلار آزاد داخلی', passed: true, note: 'اهرم دوم رشد طلا با انتظارات تورمی فعال' },
+      isConfirmed: true,
+    },
+    weightBreakdown: [
+      { variable: 'اونس جهانی طلا', weight: 20, scoreAchieved: 19, source: 'تراکت زنده TradingView', evaluation: 'روند تکنیکال و فاندامنتال صعودی پرقدرت' },
+      { variable: 'دلار آزاد داخلی', weight: 25, scoreAchieved: 23, source: 'شبکه طلا و ارز (TGJU)', evaluation: 'اهرم دوم رشد طلا در بازار ایران' },
+      { variable: 'حباب سکه نسبت به ارزش ذاتی', weight: 20, scoreAchieved: 17, source: 'اتحادیه طلا و جواهر تهران', evaluation: 'حباب در محدوده ۲۰٪ (فیلتر نویز NAV کمتر از ۲٪)' },
+      { variable: 'جریان پول صندوق‌های طلا', weight: 15, scoreAchieved: 14, source: 'TSETMC / دیتابورس', evaluation: 'ورود مستمر پول حقیقی به صندوق‌ها' },
+      { variable: 'ریسک سیاسی و نظامی', weight: 10, scoreAchieved: 9, source: 'رسانه‌های رسمی و بین‌المللی', evaluation: 'افزایش تقاضای پناهگاه امن در بازار' },
+      { variable: 'نقدینگی کل کشور', weight: 10, scoreAchieved: 8, source: 'بانک مرکزی جمهوری اسلامی', evaluation: 'روند رشد نقدینگی و پایه پولی' },
+    ],
+    details: {
+      technicalScore: 95,
+      fundamentalScore: 92,
+      flowScore: 93,
+      sentimentScore: 90,
+      analysisSummary: 'طبق فرمول دو مرحله‌ای طلا، مرحله ۱ (چراغ سبز با امتیاز ۹۰) تایید است. در مرحله ۲ (انتخاب ابزار)، صندوق عیار با دارا بودن حداکثر شمش طلا و نقدشوندگی بالا به عنوان ابزار پایه برگزیده شده است.'
+    }
+  },
+  {
+    id: 'btc',
+    name: 'بیت‌کوین و کریپتو (BTC)',
+    nameEn: 'Bitcoin & Crypto',
+    symbol: 'BTC',
+    icon: 'currency_bitcoin',
+    score: 58,
+    sentiment: 'Neutral',
+    trafficLight: 'red',
+    trafficLightLabel: '🔴 چراغ قرمز (۵۸/۱۰۰) - وضعیت ضعیف؛ خرید جدید ممنوع، نگهداری یا کاهش وزن',
+    primaryColor: '#ef4444',
+    metrics: [
+      { label: 'اقتصاد کلان جهانی (DXY):', value: 'نوسانی / انقباضی', status: 'warning' },
+      { label: 'ورود سرمایه به ETFها:', value: '-۳۵ میلیون $ (خروج)', status: 'negative' },
+      { label: 'شاخص ترس و طمع:', value: '۵۰ (خنثی)', status: 'neutral' },
+      { label: 'روند قیمتی (Trend):', value: 'نوسان زیر مقاومت', status: 'neutral' },
+    ],
+    description: 'امتیاز ۵۸ در محدوده چراغ قرمز (زیر ۶۰) قرار دارد. بر اساس قانون انضباطی S1، خرید جدید در دارایی کریپتو ممنوع بوده و سرمایه به بازارهای با امتیاز بالاتر (طلا و بورس) اختصاص می‌یابد.',
+    threeConfirmations: {
+      criterion1: { name: 'ورود سرمایه نهادی به ETFها', passed: false, note: 'خروج خفیف نقدینگی در دو روز معاملاتی اخیر در آمریکا' },
+      criterion2: { name: 'شاخص ترس و طمع (Alternative.me)', passed: false, note: 'سطح ۵۰ خنثی و بدون سیگنال فرصت ترس مفرط' },
+      criterion3: { name: 'روند قیمتی و میانگین‌های کلیدی', passed: false, note: 'عدم تثبیت بالای خط روند صعودی میان‌مدت' },
+      isConfirmed: false,
+    },
+    weightBreakdown: [
+      { variable: 'اقتصاد کلان (DXY و نرخ بهره فدرال)', weight: 30, scoreAchieved: 16, source: 'شاخص DXY / فدرال رزرو', evaluation: 'نقدینگی جهانی تحت تاثیر سیاست‌های پولی' },
+      { variable: 'ورود سرمایه به ETFها', weight: 20, scoreAchieved: 10, source: 'CoinGlass / ETF Providers', evaluation: 'خروج سرمایه از صندوق‌های اسپات آمریکا' },
+      { variable: 'شاخص ترس و طمع', weight: 15, scoreAchieved: 8, source: 'Alternative.me', evaluation: 'عدم وجود شرایط خرید طمع/ترس مفرط' },
+      { variable: 'روند قیمتی (Trend و MAها)', weight: 20, scoreAchieved: 13, source: 'مراجع معتبر تکنیکال', evaluation: 'نوسان در محدوده رنج فرسایشی' },
+      { variable: 'قوانین و مقررات', weight: 15, scoreAchieved: 11, source: 'منابع خبری معتبر جهان', evaluation: 'چشم‌انداز نظارتی کمیسیون بورس آمریکا' },
+    ],
+    details: {
+      technicalScore: 65,
+      fundamentalScore: 50,
+      flowScore: 50,
+      sentimentScore: 58,
+      analysisSummary: 'چون امتیاز به زیر ۶۰ افت کرده، حد ضرر سیستمی فعال بوده و هرگونه تخصیص جدید طبق سقف ۲۰٪ کریپتو تا زمان ارتقای امتیاز به بالای ۸۰ متوقف است.'
+    }
+  },
+  {
+    id: 'usdt',
+    name: 'تتر (پارک نقدینگی)',
+    nameEn: 'Tether / Cash Park Reserve',
+    symbol: 'USDT',
+    icon: 'attach_money',
+    score: 81,
+    sentiment: 'Bullish',
+    trafficLight: 'green',
+    trafficLightLabel: '🟢 شاخص پارک نقدینگی (۸۱/۱۰۰) - جذابیت بالای حفظ ذخیره نقد/درآمد ثابت',
+    primaryColor: '#ffb77d',
+    metrics: [
+      { label: 'نقش در سیستم S1:', value: 'حفظ قدرت خرید', status: 'positive' },
+      { label: 'صندوق جایگزین ریالی:', value: 'افران (۳۰٪ سود)', status: 'positive' },
+      { label: 'شاخص اطمینان نقدینگی:', value: 'بسیار بالا', status: 'positive' },
+      { label: 'حباب تتر به دلار:', value: 'زیر ۰.۵٪ (نرمال)', status: 'neutral' },
+    ],
+    description: 'تتر در سیستم S1 به عنوان ابزار نوسان‌گیری دیده نمی‌شود؛ بلکه شاخص جذابیت نگهداری پول نقد در برابر خطرات بازارهاست. نقدینگی آزاد پورتفو در صندوق افران پارک می‌شود.',
+    threeConfirmations: {
+      criterion1: { name: 'پوشش ریسک و حفظ ارزش ریالی', passed: true, note: 'لنگرگاه ثبات سرمایه در برابر نوسانات تند' },
+      criterion2: { name: 'نقدشوندگی سریع آنی T+0', passed: true, note: 'قابلیت تبدیل فوری برای شکار فرصت‌های خرید پله‌ای' },
+      criterion3: { name: 'بازدهی روزشمار مکمل در صندوق افران', passed: true, note: 'کسب سود موثر سالانه بالای ۳۰٪ در دوره پارک پول' },
+      isConfirmed: true,
+    },
+    weightBreakdown: [
+      { variable: 'جذابیت پارک نقدینگی نسبت به ریسک بازارها', weight: 40, scoreAchieved: 34, source: 'مدل ریاضی مقایسه بازارهای S1', evaluation: 'تامین امنیت و فرصت خرید در اصلاح‌ها' },
+      { variable: 'پایداری نرخ و حباب صرافی‌ها', weight: 30, scoreAchieved: 25, source: 'صرافی‌های معتبر رمزارز', evaluation: 'نوسان منطبق با دلار آزاد' },
+      { variable: 'نرخ بازده بدون ریسک جایگزین (افران)', weight: 30, scoreAchieved: 22, source: 'صندوق‌های درآمد ثابت بورس', evaluation: 'سود روزشمار مستمر بدون ریسک افت سرمایه' },
+    ],
+    details: {
+      technicalScore: 82,
+      fundamentalScore: 80,
+      flowScore: 85,
+      sentimentScore: 80,
+      analysisSummary: 'طبق فلسفه S1، معامله نکردن خود یک تصمیم استراتژیک است. نقدینگی پارک‌شده همواره آماده تبدیل به پله‌های ۲۰ درصدی طلا یا بورس در زمان صدور سیگنال‌های قوی است.'
+    }
+  },
+];
+
+export const initialSignal: SystemS1Signal = {
+  actionTitle: 'خرید پله‌ای مجاز است',
+  subtitle: 'خروجی سیستم S1',
+  confidenceScore: 9, // 9/10
+  dataQualityScore: 39, // 39/41
+  totalMetricsCount: 41,
+  activeMetricsCount: 39,
+  summaryText: 'با توجه به ثبات در بازار ارز و ورود جریان نقدینگی خرد به صندوق‌های طلا و درآمد ثابت، شرایط برای انباشت تدریجی دارایی‌های کم‌ریسک فراهم است.',
+  allocationSummary: 'تخصیص فعلی: ۴۰٪ درآمد ثابت، ۳۵٪ صندوق طلا، ۲۵٪ سهام. بازتوازن بعدی در انتهای هفته پیش‌بینی می‌شود.',
+  recommendedAllocations: {
+    fixedIncomePct: 40,
+    goldPct: 35,
+    equityPct: 25,
+    cashPct: 0,
+  },
+  lastUpdatedJalali: '1403/08/15 10:30:00',
+  isLive: true,
+  overallScore: 81,
+};
+
+export const initialSRI: SRIModel = {
+  overallScore: 4.4,
+  sriScore: 4.4,
+  riskLevel: 'moderate',
+  riskLevelPersian: 'ریسک متوسط (SRI: ۴.۴ / ۱۰)',
+  isEmergencyMode: false,
+  tacticalAdjustment: 'پایش دقیق اخبار سیاسی و نرخ بهره بین‌بانکی الزامی است. ورود به موقعیت‌های جدید در پله‌های حداکثر ۲۰ درصدی مجاز است.',
+  subIndices: {
+    marketRisk: 4.5,
+    economicRisk: 5.5,
+    politicalRisk: 6.0,
+    systematicRisk: 4.0,
+    operationalRisk: 2.0,
+  },
+  warLiquidityPriority: [
+    '۱. نقدینگی ریال / تتر (Cash)',
+    '۲. طلای فیزیکی ۱۸ عیار / شمش طلا (Physical Gold)',
+    '۳. تتر و استیبل‌کوین‌های دلاری (Tether)',
+    '۴. دارایی‌های بورس تهران (Bourse Paper Assets)'
+  ]
+};
+
+export const initialDailyChecklist: DailyChecklistItem[] = [
+  {
+    id: 'chk-1',
+    stepNumber: 1,
+    order: 1,
+    title: 'دریافت قیمت پایانی واقعی تمام بازارهای چهارگانه و محاسبه درصد تغییرات',
+    timeWindow: '۱۷:۰۰ - ۱۷:۱۰',
+    isCompleted: true,
+    status: 'passed',
+    source: 'TSETMC / TGJU / CoinMarketCap',
+    sourceReference: 'TSETMC / TGJU / CoinMarketCap / صرافی‌ها',
+    description: 'قیمت پایانی بورس، طلای ۱۸، سکه امامی، دلار آزاد، بیت‌کوین و تتر با دقت ثبت و درصد نوسان محاسبه شد.'
+  },
+  {
+    id: 'chk-2',
+    stepNumber: 2,
+    order: 2,
+    title: 'استخراج NAV ابطال واقعی صندوق‌های طلا و سهامی و محاسبه درصد اختلاف (حباب/تخفیف)',
+    timeWindow: '۱۷:۱۰ - ۱۷:۱۸',
+    isCompleted: true,
+    status: 'passed',
+    source: 'سامانه بورس کالا / Fipiran',
+    sourceReference: 'سامانه مدیریت دارایی بورس کالا / Fipiran',
+    description: 'NAV ابطال صندوق عیار، کهربا، طلا، توان و افران بررسی و فیلتر نویز ۲٪ اعمال گردید.'
+  },
+  {
+    id: 'chk-3',
+    stepNumber: 3,
+    order: 3,
+    title: 'پایش و ثبت حجم و ارزش معاملات خرد بورس و برآیند ورود/خروج پول حقیقی',
+    timeWindow: '۱۷:۱۸ - ۱۷:۲۵',
+    isCompleted: true,
+    status: 'passed',
+    source: 'دیتابورس / TSETMC',
+    sourceReference: 'دیتابورس / TSETMC',
+    description: 'ارزش معاملات خرد به ۸.۴۵ همت رسید و ورود پول حقیقی برای سومین روز متوالی مثبت (+۱,۲۴۰ م.ت) ثبت شد.'
+  },
+  {
+    id: 'chk-4',
+    stepNumber: 4,
+    order: 4,
+    title: 'به‌روزرسانی شاخص‌های بازارهای جهانی (اونس طلا، DXY، نفت برنت، بیت‌کوین، ETF Flow)',
+    timeWindow: '۱۷:۲۵ - ۱۷:۳۲',
+    isCompleted: true,
+    status: 'passed',
+    source: 'TradingView / CoinGlass',
+    sourceReference: 'TradingView / CoinGlass / Alternative.me',
+    description: 'اونس طلا در ۲,۷۴۵ دلار صعودی، DXY در ۱۰۳.۸، جریان ETF بیت‌کوین خروج خفیف ۳۵ میلیون دلاری.'
+  },
+  {
+    id: 'chk-5',
+    stepNumber: 5,
+    order: 5,
+    title: 'محاسبه نمره امتیاز ۰ تا ۱۰۰ برای هر یک از ۴ کلاس دارایی',
+    timeWindow: '۱۷:۳۲ - ۱۷:۴۰',
+    isCompleted: true,
+    status: 'passed',
+    source: 'موتور محاسباتی فرمول‌های وزنی S1 v1.3',
+    sourceReference: 'موتور محاسباتی فرمول‌های وزنی S1 v1.3',
+    description: 'بورس: ۸۲ (🟢 سبز) | طلا: ۹۰ (🟢 سبز) | بیت‌کوین: ۵۸ (🔴 قرمز) | تتر پارک نقدینگی: ۸۱ (🟢 سبز).'
+  },
+  {
+    id: 'chk-6',
+    stepNumber: 6,
+    order: 6,
+    title: 'محاسبه شاخص ریسک سیستم (SRI) و بررسی فعال نبودن Emergency Mode',
+    timeWindow: '۱۷:۴۰ - ۱۷:۴۵',
+    isCompleted: true,
+    status: 'passed',
+    source: 'ماتریس ۵ گانه ریسک‌های سیستماتیک S1',
+    sourceReference: 'ماتریس ۵ گانه ریسک‌های سیستماتیک S1',
+    description: 'شاخص SRI عدد ۴.۴ / ۱۰ (ریسک متوسط) محاسبه شد؛ وضعیت اضطراری غیرفعال است.'
+  },
+  {
+    id: 'chk-7',
+    stepNumber: 7,
+    order: 7,
+    title: 'تعیین شاخص اطمینان تصمیم (Decision Confidence Index) بین ۱ تا ۱۰ و بررسی وتو',
+    timeWindow: '۱۷:۴۵ - ۱۷:۵۰',
+    isCompleted: true,
+    status: 'passed',
+    source: 'الگوریتم همگرایی داده‌های تکنیکال و فلو',
+    sourceReference: 'الگوریتم همگرایی داده‌های تکنیکال، بنیادی و فلو',
+    description: 'شاخص اطمینان ۹ از ۱۰ (بسیار بالا)؛ قانون وتوی اطمینان (زیر ۶) غیرفعال بوده و مجوز اقدام صادر شد.'
+  },
+  {
+    id: 'chk-8',
+    stepNumber: 8,
+    order: 8,
+    title: 'اعمال قوانین جابه‌جایی، ورود پله‌ای ۲۰ درصدی و قانون سه تایید',
+    timeWindow: '۱۷:۵۰ - ۱۷:۵۴',
+    isCompleted: true,
+    status: 'passed',
+    source: 'فصل ۲ کتاب قانون S1 v1.3',
+    sourceReference: 'فصل ۲ کتاب قانون S1 v1.3',
+    description: 'قانون ۳ تایید برای طلا و بورس پاس شد. ورود صرفاً در قالب پله ۲۰ درصدی به صندوق عیار تخصیص یافت.'
+  },
+  {
+    id: 'chk-9',
+    stepNumber: 9,
+    order: 9,
+    title: 'به‌روزرسانی ارزش روز، بازدهی و دراودان (Max Drawdown) پورتفوی ۱ میلیارد تومانی',
+    timeWindow: '۱۷:۵۴ - ۱۷:۵۷',
+    isCompleted: true,
+    status: 'passed',
+    source: 'پورتفوی کاغذی S1',
+    sourceReference: 'موتور پورتفوی فرضی S1 Paper Portfolio',
+    description: 'ارزش پورتفو: ۱,۱۴۸,۶۵۰,۰۰۰ تومان (+۱۴.۸۶٪ بازدهی کل)؛ حداکثر افت سرمایه ۴.۱۸٪ (بسیار کمتر از سقف مجاز ۱۵٪).'
+  },
+  {
+    id: 'chk-10',
+    stepNumber: 10,
+    order: 10,
+    title: 'ثبت فرضی معاملات تاییدشده با قیمت پایانی واقعی و کسر کارمزد در ژورنال سرمایه‌گذاری',
+    timeWindow: '۱۷:۵۷ - ۱۷:۵۹',
+    isCompleted: true,
+    status: 'passed',
+    source: 'دفتر ثبت معاملات رسمی سیستم S1',
+    sourceReference: 'دفتر ثبت معاملات رسمی سیستم S1',
+    description: 'معاملات با کسر کارمزد دقیق ۰.۱۵٪ بورس کالا و قیمت‌های پایانی تابلو ثبت شدند.'
+  },
+  {
+    id: 'chk-11',
+    stepNumber: 11,
+    order: 11,
+    title: 'صدور رسمی تنها یکی از ۵ خروجی صریح مجاز: خرید / خرید پله‌ای / نگهداری / سیو سود / فروش / عدم اقدام',
+    timeWindow: '۱۸:۰۰',
+    isCompleted: true,
+    status: 'passed',
+    source: 'خروجی نهایی سیستم S1',
+    sourceReference: 'خروجی نهایی سیستم S1',
+    description: 'خروجی نهایی: «خرید پله‌ای مجاز است» (تخصیص به صندوق طلای عیار و درآمد ثابت افران).'
+  }
+];
+
+export const s1RulebookSections: S1V13RulebookSection[] = [
+  {
+    id: 's1-sec-1',
+    sectionNumber: 'فصل ۱',
+    title: 'فلسفه و تعریف سیستم S1',
+    subtitle: 'چارچوب فکری، اهداف بنیادین، تعریف موفقیت و اصول ۴ گانه عملیاتی',
+    iconName: 'shield',
+    paragraphs: [
+      {
+        heading: '۱-۱. هدف و فلسفه بنیادین سیستم',
+        text: 'سیستم S1 یک سیستم معامله‌گری (تریدینگ) نیست؛ بلکه یک سیستم جامع «مدیریت سرمایه و ریسک» است. این سیستم بر پایه ریاضیات و بدون دخالت سوگیری‌های انسانی فعالیت می‌کند.',
+        bulletPoints: [
+          '۱. حفظ و بقای اصل سرمایه (اولین و مهم‌ترین وظیفه سیستم)',
+          '۲. کنترل دقیق و ریاضی ریسک پورتفو',
+          '۳. حذف کامل تصمیم‌گیری‌های احساسی، ترس و هیجانات بازار (FOMO & Panic Selling)',
+          '۴. دستیابی به بازدهی پایدار و بلندمدت',
+          '۵. شکست دادن تورم در افق زمانی بلندمدت'
+        ]
+      },
+      {
+        heading: 'اندازه‌گیری به جای پیش‌بینی',
+        text: 'سیستم S1 هرگز تلاش نمی‌کند آینده را پیش‌بینی کند، سقف یا کف بازارها را شکار کند، یا بر اساس شایعات و اخبار بدون سند معامله کند. وظیفه سیستم اندازه‌گیری دقیق و ریاضی شرایط فعلی بازارها با داده‌های واقعی و تصمیم‌گیری بر اساس قوانین از پیش تعیین‌شده است.'
+      },
+      {
+        heading: '۱-۲. تعریف موفقیت در سیستم S1',
+        text: 'موفقیت در این سیستم با «بیشترین سود ممکن در کوتاه‌مدت» سنجیده نمی‌شود. موفقیت یعنی «کمترین اشتباه بزرگ». کیفیت سیستم بر اساس میزان رعایت انضباط و پایبندی به قوانین سنجیده می‌شود، نه نتیجه عددی تک‌معامله‌ها. حتی اگر تصمیمی به زیان منجر شود، در صورتی که طبق کتاب قانون اتخاذ شده باشد، صحیح تلقی می‌گردد.'
+      },
+      {
+        heading: '۱-۳. اصول چهارگانه عملیاتی سیستم S1',
+        text: 'چهار اصل بنیادین زیر خط قرمزهای اجرایی سیستم هستند:',
+        bulletPoints: [
+          'اصل مقایسه بازارها: هیچ بازاری به خودی خود خوب یا بد نیست. تمام بازارهای بورس، طلا، بیت‌کوین و تتر دائماً مقایسه شده و سرمایه به بالاترین امتیاز نسبی منتقل می‌شود.',
+          'اصل عدم اقدام (No Action): اگر داده‌های ورودی ناقص باشند یا سیگنال صریحی صادر نکنند، بهترین تصمیم سرمایه‌گذاری عدم اقدام است. معامله نکردن، خود یک تصمیم استراتژیک است.',
+          'اصل شفافیت: تمام امتیازدهی‌ها و جابه‌جایی‌ها باید با داده‌های واقعی و فرمول‌های عددی دقیق قابل توضیح و بازسازی باشند.',
+          'اصل نسخه به‌روز (Versioning): قوانین هرگز سلیقه‌ای تغییر نمی‌کنند. اصلاح ساختاری فقط در قالب انتشار نسخه رسمی جدید (مانند v1.3) و پس از تست مجاز است.'
+        ]
+      }
+    ]
+  },
+  {
+    id: 's1-sec-2',
+    sectionNumber: 'فصل ۲',
+    title: 'مکانیزم و فرمول‌های امتیازدهی (Scoring System)',
+    subtitle: 'چراغ‌های سه‌گانه، فرمول‌های ۱۰۰ امتیازی بورس، طلا، بیت‌کوین و قوانین جابه‌جایی',
+    iconName: 'sliders',
+    paragraphs: [
+      {
+        heading: '۲-۱. طبقه‌بندی امتیازها و وضعیت چراغ‌ها (۰ تا ۱۰۰)',
+        text: 'سیستم S1 هر روز به هر یک از بازارهای اصلی امتیازی بین ۰ تا ۱۰۰ اختصاص می‌دهد:',
+        bulletPoints: [
+          '🔴 چراغ قرمز (امتیاز ۰ تا ۵۹): وضعیت ضعیف؛ خرید جدید ممنوع، زمان خروج یا کاهش وزن دارایی.',
+          '🟡 چراغ زرد (امتیاز ۶۰ تا ۷۹): وضعیت خنثی؛ صرفاً نگهداری (Hold) دارایی‌های موجود، جابه‌جایی ممنوع.',
+          '🟢 چراغ سبز (امتیاز ۸۰ تا ۱۰۰): وضعیت بسیار قوی؛ مجاز به خرید جدید یا افزایش وزن دارایی به صورت پله‌ای.'
+        ]
+      },
+      {
+        heading: '۲-۲. فرمول و اوزان بورس ایران (۱۰۰ امتیاز)',
+        text: 'امتیاز بورس ایران از مجموع معیارهای مستند زیر محاسبه می‌شود:',
+        bulletPoints: [
+          'ورود پول حقیقی (وزن ۳۰): ورود یک‌روزه معتبر نیست؛ برای تایید باید حداقل ۳ روز متوالی مثبت باشد (منبع: TSETMC/دیتابورس).',
+          'ارزش معاملات خرد (وزن ۲۰): باید بیشتر از میانگین یک ماه گذشته باشد تا رونق بازار تایید گردد.',
+          'قدرت خریدار حقیقی (وزن ۱۵): نسبت سرانه خرید حقیقی به سرانه فروش حقیقی باید بزرگتر از ۱ باشد.',
+          'اقتصاد کلان (وزن ۲۰): ارزیابی نرخ بهره، نرخ ارز توافقی/نیما، سیاست‌های پولی و قیمت کامودیتی‌ها.',
+          'تحلیل تکنیکال (وزن ۱۰): صرفاً به عنوان ابزار زمان‌بندی (Timing) استفاده می‌شود، نه تصمیم‌گیری اصلی.',
+          'اخبار سیاسی و محیطی (وزن ۵): رصد تنش‌ها یا گشایش‌های موثر بر بازار سهام.'
+        ]
+      },
+      {
+        heading: '۲-۳. فرمول و اوزان طلا و سکه (۱۰۰ امتیاز)',
+        text: 'امتیاز طلا از مجموع معیارهای زیر محاسبه می‌شود:',
+        bulletPoints: [
+          'اونس جهانی طلا (وزن ۲۰): سنجش روند تکنیکال و فاندامنتال طلای جهانی در TradingView.',
+          'دلار آزاد داخلی (وزن ۲۵): جهت حرکت دلار آزاد به عنوان اهرم دوم رشد طلا در ایران (TGJU).',
+          'حباب سکه نسبت به ارزش ذاتی (وزن ۲۰): ارزیابی حباب قیمت و ترجیح صندوق‌های شمش‌محور.',
+          'جریان پول صندوق‌های طلا (وزن ۱۵): ورود و خروج پول حقیقی به صندوق‌های طلای بورس کالا.',
+          'ریسک سیاسی و نظامی (وزن ۱۰): افزایش ریسک سیاسی مستقیماً تقاضای طلا را ارتقا می‌دهد.',
+          'نقدینگی کشور (وزن ۱۰): روند رشد پایه پولی و حجم نقدینگی کل بانک مرکزی.'
+        ]
+      },
+      {
+        heading: '۲-۴. فرمول بیت‌کوین و کریپتو (۱۰۰ امتیاز)',
+        text: 'امتیاز بیت‌کوین از مجموع متغیرهای زیر محاسبه می‌شود:',
+        bulletPoints: [
+          'اقتصاد کلان جهانی Macro (وزن ۳۰): شاخص DXY و نرخ بهره فدرال رزرو و نقدینگی جهانی.',
+          'ورود سرمایه به ETFها (وزن ۲۰): میزان جریان خرید و فروش صندوق‌های اسپات در آمریکا (CoinGlass).',
+          'شاخص ترس و طمع (وزن ۱۵): سنجش احساسات بازار (Alternative.me).',
+          'روند قیمتی Trend (وزن ۲۰): میانگین‌های متحرک کلیدی و خطوط روند.',
+          'قوانین و مقررات (وزن ۱۵): اخبار نظارتی و مصوبات کمیسیون‌های نظارتی بین‌المللی.'
+        ]
+      },
+      {
+        heading: '۲-۵. نقش بازار تتر (پارک نقدینگی)',
+        text: 'تتر در سیستم S1 به عنوان ابزار نوسان‌گیری دیده نمی‌شود؛ بلکه شاخص جذابیت نگهداری پول نقد در برابر خطرات بازارهاست. اگر امتیاز بورس، طلا و کریپتو همگی زیر ۶۰ باشند، امتیاز تتر به ۱۰۰ می‌رسد که یعنی تمام سرمایه باید در تتر یا صندوق درآمد ثابت (مانند افران) پارک شود.'
+      },
+      {
+        heading: '۲-۶. شاخص اطمینان تصمیم و قانون وتو',
+        text: 'سیستم موظف به محاسبه شاخص اطمینان بین ۱ تا ۱۰ است. ۱ تا ۳ (پایین)، ۴ تا ۶ (متوسط)، ۷ تا ۸ (بالا)، ۹ تا ۱۰ (بسیار بالا). قانون وتو: اگر شاخص اطمینان تصمیم کمتر از ۶ باشد، فرآیند خرید حتی با وجود امتیاز بالای بازار وتو شده و به تعویق می‌افتد.'
+      },
+      {
+        heading: '۲-۷. قوانین جابه‌جایی سرمایه و آستانه‌ها',
+        text: 'انضباط اجرایی جابه‌جایی سرمایه بر پایه ۴ قانون قطعی است:',
+        bulletPoints: [
+          'قانون اختلاف امتیاز: سرمایه تنها در صورت اختلاف حداقل ۱۵ تا ۲۰ امتیاز بین دو بازار منتقل می‌شود. جابه‌جایی برای تفاوت‌های جزئی کاملاً ممنوع است.',
+          'قانون سه تایید: برای صدور هر سیگنال، حداقل ۳ معیار مستقل باید همزمان یکدیگر را تایید کنند.',
+          'قانون ورود پله‌ای: خریدها در پله‌های حداکثر ۲۰ درصدی از کل سرمایه انجام می‌شوند.',
+          'قانون افزایش موقعیت: پله‌های بعدی تنها در صورت حفظ یا ارتقای امتیاز بازار در روزهای بعد مجاز است.'
+        ]
+      },
+      {
+        heading: '۲-۸. فرمول دو مرحله‌ای طلا و قانون ستون اصلی (فصل ۶)',
+        text: 'تصمیم ورود به طلا و انتخاب ابزار دو تصمیم کاملاً مستقل هستند. مرحله اول: محاسبه امتیاز ۰ تا ۱۰۰ طلا (چراغ سبز بالای ۸۰). مرحله دوم: انتخاب ابزار برتر بر اساس فرمول (اندازه صندوق ۳۰ + نقدشوندگی ۲۰ + اختلاف قیمت با NAV ابطال ۲۰ + ترکیب دارایی شمش ۱۵ + سابقه ۱۵).',
+        bulletPoints: [
+          'قانون ستون اصلی طلا: حداقل ۸۰٪ از بخش طلای سبد باید در ابزار پایه (صندوق‌های شمشمحور بزرگ مانند عیار) قرار گیرد. ابزارهای نوسانی/سکه حداکثر مجاز به ۲۰٪ هستند.',
+          'قانون فیلتر نویز NAV: اختلاف قیمت بازار با NAV ابطال اگر کمتر از ۲ درصد باشد، نویز تلقی شده و معامله بر اساس آن ممنوع است. اختلاف ۲ تا ۵ درصد عادی و بالای ۵ درصد نیازمند واکاوی بنیادی است.'
+        ]
+      }
+    ]
+  },
+  {
+    id: 's1-sec-3',
+    sectionNumber: 'فصل ۳',
+    title: 'قوانین مدیریت پورتفوی ۱ میلیارد تومانی (S1 Paper Portfolio)',
+    subtitle: 'تخصیص دارایی، دفتر ثبت معاملات با کارمزد و قیمت پایانی، مدیریت حد ضرر و سقف دراودان',
+    iconName: 'wallet',
+    paragraphs: [
+      {
+        heading: '۳-۱. قوانین تخصیص دارایی‌ها (Asset Allocation)',
+        text: 'سقف‌های مجاز تخصیص سرمایه در پورتفوی فرضی ۱ میلیارد تومانی:',
+        bulletPoints: [
+          'سقف مجاز بورس: حداکثر ۶۰٪ از کل پورتفو (در ۳ پله ۲۰ درصدی مجزا در صورت امتیاز بالای ۸۰).',
+          'سقف مجاز طلا: حداکثر ۴۰٪ از کل پورتفو (حداقل ۸۰٪ در عیار شمشمحور).',
+          'سقف مجاز بیت‌کوین: حداکثر ۲۰٪ از کل پورتفو.',
+          'تتر / درآمد ثابت (پارک پول): نقدینگی باقیمانده همواره در صندوق درآمد ثابت افران یا تتر پارک می‌شود.'
+        ]
+      },
+      {
+        heading: '۳-۲. دفتر ثبت معاملات واقعی (Journal Rules)',
+        text: 'تمام معاملات باید بر اساس قیمت پایانی واقعی تابلو، کسر کارمزد دقیق بورس/صرافی، ثبت تاریخ، تعداد واحد، ارزش معامله، امتیاز S1 و شاخص اطمینان ثبت شوند. ثبت سند، بخشی از خود معامله است.'
+      },
+      {
+        heading: '۳-۳. مدیریت حد ضرر و حد سود',
+        text: 'قوانین خروج و حفظ سرمایه:',
+        bulletPoints: [
+          'قانون سقف ریسک سبد (Max Drawdown): حداکثر افت مجاز کل پورتفو ۱۵٪ است. در صورت افت بیش از ۱۵٪ از سقف تاریخی، وضعیت هشدار سطح ۱ صادر شده و ورود به پله‌های جدید ممنوع می‌شود.',
+          'حد ضرر دارایی‌ها: بر اساس افت امتیاز بازار به زیر ۶۰ فعال می‌شود، نه درصد تکنیکالی.',
+          'قانون سیو سود: بر اساس تضعیف متغیرهای اصلی (خروج پول، افت معاملات) رخ می‌دهد، نه درصد سود ثابت.',
+          'قانون عدم انتقام (Anti-Revenge): در صورت بسته شدن معامله با زیان، افزایش حجم یا ریسک معامله بعدی برای جبران ضرر اکیداً ممنوع است.'
+        ]
+      }
+    ]
+  },
+  {
+    id: 's1-sec-4',
+    sectionNumber: 'فصل ۴',
+    title: 'دستورالعمل تحلیل اخبار و ریسک‌های سیستماتیک',
+    subtitle: 'طبقه‌بندی ۵گانه ریسک‌ها، فرمول شاخص ریسک سیستم (SRI)، وضعیت اضطراری و شرایط جنگی',
+    iconName: 'alert-triangle',
+    paragraphs: [
+      {
+        heading: '۴-۱. طبقه‌بندی پنجگانه ریسک‌ها (A تا E)',
+        text: 'پنج حوزه ارزیابی ریسک در سیستم S1:',
+        bulletPoints: [
+          'ریسک نوع A (ریسک بازار - Market Risk): اصلاح‌های طبیعی قیمت؛ کاهش ملایم امتیاز، خروج کامل نیاز نیست.',
+          'ریسک نوع B (ریسک اقتصادی): نرخ بهره بانکی، سیاست‌های شدید انقباضی، رکود اقتصادی، مالیات؛ کاهش تدریجی وزن.',
+          'ریسک نوع C (ریسک سیاسی): تحریم‌های جدید، مذاکرات دیپلماتیک، انتخابات؛ کاهش شاخص اطمینان تصمیم.',
+          'ریسک نوع D (ریسک سیستماتیک - Systematic Risk): جنگ مستقیم، حملات موشکی، انسداد تنگه هرمز، تعطیلی بورس یا قطعی اینترنت؛ حیاتی‌ترین ریسک سیستم.',
+          'ریسک نوع E (ریسک عملیاتی): خرابی هسته بورس، بسته شدن صرافی‌ها، خطای محاسباتی.'
+        ]
+      },
+      {
+        heading: '۴-۲. فرمول شاخص ریسک سیستم (System Risk Index - SRI)',
+        text: 'سیستم هر روز نمره‌ای بین ۰ تا ۱۰ به هر یک از ۵ ریسک فوق اختصاص داده و شاخص SRI را محاسبه می‌کند:',
+        formula: 'SRI = (A + B + C + D + E) / 5',
+        bulletPoints: [
+          '۰ تا ۳: ریسک پایین؛ بازارها در وضعیت عادی.',
+          '۳ تا ۶: ریسک متوسط؛ پایش دقیق اخبار الزامی است.',
+          '۶ تا ۸: ریسک بالا؛ کاهش ملایم حجم خرید پله‌ها از ۲۰٪ به ۱۰٪.',
+          '۸ تا ۱۰: وضعیت اضطراری (Emergency Mode 🔴).'
+        ]
+      },
+      {
+        heading: '۴-۳. پروتکل وضعیت اضطراری (SRI >= 8)',
+        text: 'در صورت فراتر رفتن SRI از عدد ۸، خرید دارایی جدید کاملاً ممنوع است، افزایش ریسک سبد ممنوع بوده و سیستم تنها مجاز به حفظ موقعیت‌های فعلی یا کاهش وزن دارایی‌های پرریسک در اولین پنجره معاملاتی است.'
+      },
+      {
+        heading: '۴-۴. شرایط جنگی و زنجیره نقدشوندگی نجات سرمایه',
+        text: 'در صورت وقوع جنگ مستقیم یا حملات گسترده، هدف سیستم بقاء و نجات سرمایه است. اولویت بازچیدمان دارایی‌ها:',
+        formula: 'Priority: Cash (ریال/تتر) ➔ Physical Gold (طلای فیزیکی) ➔ Tether ➔ Bourse Paper Assets',
+        warning: 'در این شرایط، دارایی‌های کاغذی بورس در اولین فرصت نقد شده و به دارایی‌های فیزیکی یا نقد امن تبدیل می‌شوند.'
+      },
+      {
+        heading: '۴-۵. تعطیلی بورس و قطعی داده',
+        text: 'در تعطیلی بورس، ثبت معاملات فرضی متوقف شده و قید می‌شود: «بازار تعطیل است؛ تصمیم اجرایی تا بازگشایی به تعویق افتاد». در صورت قطعی اینترنت و نبود داده، حدس زدن ممنوع بوده و خروجی سیستم خودکار به «عدم اقدام (No Action)» تبدیل می‌شود.'
+      }
+    ]
+  },
+  {
+    id: 's1-sec-5',
+    sectionNumber: 'فصل ۵',
+    title: 'چک‌لیست روزانه اجرای سیستم S1 (ماده ۱۱)',
+    subtitle: '۱۱ گام اجرایی بازبینی روزانه بین ساعت ۱۷:۰۰ تا ۱۸:۰۰ و خروجی‌های مجاز',
+    iconName: 'check-circle-2',
+    paragraphs: [
+      {
+        heading: 'ماده ۱۱. پروتکل پایش روزانه ساعت ۱۷:۰۰ تا ۱۸:۰۰',
+        text: 'سیستم موظف است هر روز بین ساعت ۱۷ تا ۱۸ چک‌لیست ۱۱ گانه را اجرا نماید:',
+        bulletPoints: [
+          '۱. دریافت قیمت پایانی واقعی تمام بازارهای چهارگانه و محاسبه درصد تغییرات',
+          '۲. استخراج NAV ابطال واقعی صندوق‌های طلا و سهامی و محاسبه درصد اختلاف (حباب/تخفیف)',
+          '۳. پایش و ثبت حجم و ارزش معاملات خرد بورس و برآیند ورود/خروج پول حقیقی (۳ روز متوالی)',
+          '۴. به‌روزرسانی شاخص‌های بازارهای جهانی (اونس طلا، DXY، نفت، بیت‌کوین و ETF Flow)',
+          '۵. محاسبه نمره امتیاز ۰ تا ۱۰۰ برای هر یک از کلاس‌های دارایی',
+          '۶. محاسبه شاخص ریسک سیستم (SRI) و بررسی فعال نبودن Emergency Mode',
+          '۷. تعیین شاخص اطمینان تصمیم (۱ تا ۱۰) و بررسی قانون وتو (زیر ۶)',
+          '۸. اعمال قوانین جابه‌جایی، ورود پله‌ای ۲۰ درصدی و قانون سه تایید',
+          '۹. به‌روزرسانی ارزش روز، بازدهی و دراودان (Max Drawdown زیر ۱۵٪) پورتفوی ۱ میلیارد تومانی',
+          '۱۰. ثبت فرضی معاملات تاییدشده با قیمت پایانی واقعی و کسر کارمزد در ژورنال سرمایه‌گذاری',
+          '۱۱. صدور تنها یکی از ۵ خروجی صریح مجاز سیستم'
+        ]
+      },
+      {
+        heading: 'خروجی‌های پنج‌گانه صریح و مجاز سیستم S1',
+        text: 'خروجی رسمی و نهایی سیستم در هر روز منحصراً باید یکی از موارد زیر باشد:',
+        bulletPoints: [
+          '🟢 ۱. خرید (Buy)',
+          '🟢 ۲. خرید پله‌ای (Staged Buy)',
+          '🟡 ۳. نگهداری (Hold)',
+          '🟠 ۴. سیو سود (Take Profit)',
+          '🔴 ۵. فروش / کاهش موقعیت (Sell)',
+          '⚪ ۶. عدم اقدام (No Action)'
+        ]
+      }
+    ]
+  }
+];
+
+export const initialDailyInputs: InputMetric[] = [
+  // Bourse (10 items)
+  {
+    id: 'tse-index-change',
+    category: 'bourse',
+    categoryLabel: 'بورس و سهام',
+    title: 'تغییرات شاخص کل',
+    code: 'TSE_INDX_PCT',
+    value: '+1.45%',
+    unit: 'درصد',
+    scoreContribution: 8,
+    status: 'bullish',
+    weight: 0.15,
+    lastUpdated: '10:28',
+    description: 'رشد شاخص کل نسبت به روز کاری قبل'
+  },
+  {
+    id: 'tse-retail-volume',
+    category: 'bourse',
+    categoryLabel: 'بورس و سهام',
+    title: 'ارزش معاملات خرد سهام و حق تقدم',
+    code: 'TSE_RETAIL_VOL',
+    value: '8,450',
+    unit: 'میلیارد تومان',
+    scoreContribution: 9,
+    status: 'bullish',
+    weight: 0.20,
+    lastUpdated: '10:30',
+    description: 'حجم نقدینگی در گردش معاملات خرد بازار'
+  },
+  {
+    id: 'tse-real-money-flow',
+    category: 'bourse',
+    categoryLabel: 'بورس و سهام',
+    title: 'ورود/خروج پول حقیقی به سهام',
+    code: 'TSE_REAL_FLOW',
+    value: '+420',
+    unit: 'میلیارد تومان',
+    scoreContribution: 8,
+    status: 'bullish',
+    weight: 0.20,
+    lastUpdated: '10:30',
+    description: 'خالص ورود پول سرمایه‌گذاران حقیقی'
+  },
+  {
+    id: 'tse-pe-ratio',
+    category: 'bourse',
+    categoryLabel: 'بورس و سهام',
+    title: 'نسبت P/E ttm متوسط بازار',
+    code: 'TSE_PE_TTM',
+    value: '6.8',
+    unit: 'واحد',
+    scoreContribution: 7,
+    status: 'bullish',
+    weight: 0.10,
+    lastUpdated: '09:00',
+    description: 'نسبت قیمت به درآمد گذشته‌نگر بازار'
+  },
+  {
+    id: 'tse-queue-ratio',
+    category: 'bourse',
+    categoryLabel: 'بورس و سهام',
+    title: 'نسبت ارزش صفوف خرید به فروش',
+    code: 'TSE_BUY_SELL_QUEUE',
+    value: '2.4',
+    unit: 'برابر',
+    scoreContribution: 8,
+    status: 'bullish',
+    weight: 0.10,
+    lastUpdated: '10:25',
+    description: 'برتری قدرت صف‌های تقاضا'
+  },
+  {
+    id: 'tse-leveraged-premium',
+    category: 'bourse',
+    categoryLabel: 'بورس و سهام',
+    title: 'حباب/پرمیوم صندوق‌های اهرمی',
+    code: 'TSE_LEVERAGE_PRM',
+    value: '+4.2%',
+    unit: 'درصد',
+    scoreContribution: 7,
+    status: 'bullish',
+    weight: 0.08,
+    lastUpdated: '10:29',
+    description: 'میانگین حباب قیمت بازاری صندوق‌های اهرمی نسبت به NAV'
+  },
+  {
+    id: 'tse-per-capita-power',
+    category: 'bourse',
+    categoryLabel: 'بورس و سهام',
+    title: 'سرانه خرید به فروش حقیقی',
+    code: 'TSE_POWER_RATIO',
+    value: '1.35',
+    unit: 'واحد',
+    scoreContribution: 7,
+    status: 'bullish',
+    weight: 0.07,
+    lastUpdated: '10:20',
+    description: 'قدرت خریداران حقیقی در برابر فروشندگان'
+  },
+  {
+    id: 'tse-fixed-flow-out',
+    category: 'bourse',
+    categoryLabel: 'بورس و سهام',
+    title: 'خروج پول از درآمد ثابت به سهام',
+    code: 'TSE_FIXED_DRAIN',
+    value: '+310',
+    unit: 'میلیارد تومان',
+    scoreContribution: 8,
+    status: 'bullish',
+    weight: 0.10,
+    lastUpdated: '10:28',
+    description: 'مهاجرت نقدینگی پارک شده به بازار ریسک‌پذیر'
+  },
+
+  // Gold & Coins (9 items)
+  {
+    id: 'gold-ounce-price',
+    category: 'gold',
+    categoryLabel: 'طلا و مسکوکات',
+    title: 'انس جهانی طلا (XAU/USD)',
+    code: 'XAU_USD_GLOBAL',
+    value: '2,685',
+    unit: 'دلار',
+    scoreContribution: 9,
+    status: 'bullish',
+    weight: 0.25,
+    lastUpdated: '10:15',
+    description: 'قیمت لحظه‌ای انس جهانی در بازارهای بین‌المللی'
+  },
+  {
+    id: 'gold-coin-bubble',
+    category: 'gold',
+    categoryLabel: 'طلا و مسکوکات',
+    title: 'حباب سکه تمام طرح جدید',
+    code: 'GOLD_COIN_BUBBLE',
+    value: '20.5%',
+    unit: 'درصد',
+    scoreContribution: 5,
+    status: 'neutral',
+    weight: 0.20,
+    lastUpdated: '10:22',
+    description: 'درصد حباب قیمتی سکه امامی نسبت به ارزش ذاتی'
+  },
+  {
+    id: 'gold-fund-inflow',
+    category: 'gold',
+    categoryLabel: 'طلا و مسکوکات',
+    title: 'ورود پول به صندوق‌های طلای بورس',
+    code: 'GOLD_ETF_INFLOW',
+    value: '+185',
+    unit: 'میلیارد تومان',
+    scoreContribution: 9,
+    status: 'bullish',
+    weight: 0.20,
+    lastUpdated: '10:30',
+    description: 'جریان نقدینگی به صندوق‌های عیار، طلا، کهربا و زر'
+  },
+  {
+    id: 'gold-18k-gram',
+    category: 'gold',
+    categoryLabel: 'طلا و مسکوکات',
+    title: 'قیمت هر گرم طلای ۱۸ عیار',
+    code: 'GOLD_18K_IRR',
+    value: '4,480,000',
+    unit: 'تومان',
+    scoreContribution: 9,
+    status: 'bullish',
+    weight: 0.15,
+    lastUpdated: '10:20',
+    description: 'نرخ پایه طلا در بازار تهران'
+  },
+  {
+    id: 'gold-physical-demand',
+    category: 'gold',
+    categoryLabel: 'طلا و مسکوکات',
+    title: 'شاخص تقاضای آبشده و شمش',
+    code: 'GOLD_MELTED_DEMAND',
+    value: 'بالا (High)',
+    unit: 'کیفی',
+    scoreContribution: 9,
+    status: 'bullish',
+    weight: 0.10,
+    lastUpdated: '10:00',
+    description: 'حجم سفارشات بنکداران بازار طلا'
+  },
+  {
+    id: 'gold-central-bank-auction',
+    category: 'gold',
+    categoryLabel: 'طلا و مسکوکات',
+    title: 'حراج سکه و شمش مرکز مبادله',
+    code: 'GOLD_CBI_AUCTION',
+    value: 'جذب کامل (100%)',
+    unit: 'درصد',
+    scoreContribution: 8,
+    status: 'bullish',
+    weight: 0.10,
+    lastUpdated: '09:30',
+    description: 'نرخ تخصیص و استقبال خریداران حراج'
+  },
+
+  // Crypto (7 items)
+  {
+    id: 'btc-price',
+    category: 'crypto',
+    categoryLabel: 'رمزارزها',
+    title: 'قیمت بیت‌کوین (BTC/USDT)',
+    code: 'BTC_PRICE_SPOT',
+    value: '67,400',
+    unit: 'دلار',
+    scoreContribution: 6,
+    status: 'neutral',
+    weight: 0.25,
+    lastUpdated: '10:29',
+    description: 'قیمت لحظه‌ای بیت‌کوین در صرافی بایننس'
+  },
+  {
+    id: 'btc-etf-netflow',
+    category: 'crypto',
+    categoryLabel: 'رمزارزها',
+    title: 'خالص جریان ETF‌های اسپات بیت‌کوین',
+    code: 'BTC_ETF_FLOW_NET',
+    value: '-45.8',
+    unit: 'میلیون دلار',
+    scoreContribution: 4,
+    status: 'bearish',
+    weight: 0.20,
+    lastUpdated: '08:00',
+    description: 'جریان خروجی سرمایه از صندوق‌های وال‌استریت'
+  },
+  {
+    id: 'crypto-fear-greed',
+    category: 'crypto',
+    categoryLabel: 'رمزارزها',
+    title: 'شاخص ترس و طمع کریپتو',
+    code: 'CRYPTO_FEAR_GREED',
+    value: '50',
+    unit: 'خنثی (0-100)',
+    scoreContribution: 5,
+    status: 'neutral',
+    weight: 0.20,
+    lastUpdated: '09:00',
+    description: 'احساسات کلی بازار رمزارزها'
+  },
+  {
+    id: 'btc-dominance',
+    category: 'crypto',
+    categoryLabel: 'رمزارزها',
+    title: 'دامیننس بیت‌کوین (BTC.D)',
+    code: 'BTC_DOMINANCE_PCT',
+    value: '58.4%',
+    unit: 'درصد',
+    scoreContribution: 6,
+    status: 'neutral',
+    weight: 0.15,
+    lastUpdated: '10:10',
+    description: 'سهم بازار بیت‌کوین از کل ارزش رمزارزها'
+  },
+  {
+    id: 'crypto-funding-rate',
+    category: 'crypto',
+    categoryLabel: 'رمزارزها',
+    title: 'فاندینگ ریت میانگین صرافی‌ها',
+    code: 'CRYPTO_FUNDING_RATE',
+    value: '+0.008%',
+    unit: 'درصد/۸ساعته',
+    scoreContribution: 6,
+    status: 'neutral',
+    weight: 0.10,
+    lastUpdated: '10:00',
+    description: 'تعادل قراردادهای آتی اهرمی لانگ و شورت'
+  },
+  {
+    id: 'eth-btc-ratio',
+    category: 'crypto',
+    categoryLabel: 'رمزارزها',
+    title: 'نسبت اتریوم به بیت‌کوین (ETH/BTC)',
+    code: 'ETH_BTC_PAIR_RATIO',
+    value: '0.0385',
+    unit: 'نسبت',
+    scoreContribution: 5,
+    status: 'neutral',
+    weight: 0.10,
+    lastUpdated: '10:24',
+    description: 'قدرت آلت‌کوین‌ها در برابر بیت‌کوین'
+  },
+
+  // Forex & Tether (8 items)
+  {
+    id: 'usdt-toman-rate',
+    category: 'forex',
+    categoryLabel: 'ارز و تتر',
+    title: 'نرخ تتر به تومان',
+    code: 'USDT_TOMAN_RATE',
+    value: '68,900',
+    unit: 'تومان',
+    scoreContribution: 8,
+    status: 'bullish',
+    weight: 0.30,
+    lastUpdated: '10:30',
+    description: 'میانگین قیمت تتر در صرافی‌های p2p داخلی'
+  },
+  {
+    id: 'usd-free-market',
+    category: 'forex',
+    categoryLabel: 'ارز و تتر',
+    title: 'دلار آزاد تهران (اسکناس)',
+    code: 'USD_TEHRAN_CASH',
+    value: '68,750',
+    unit: 'تومان',
+    scoreContribution: 8,
+    status: 'bullish',
+    weight: 0.25,
+    lastUpdated: '10:28',
+    description: 'نرخ اعلامی بازار منوچهری و سبزه‌میدان'
+  },
+  {
+    id: 'dirham-herat-arbitrage',
+    category: 'forex',
+    categoryLabel: 'ارز و تتر',
+    title: 'نرخ حواله درهم دبی',
+    code: 'AED_TRANSFER_RATE',
+    value: '18,820',
+    unit: 'تومان',
+    scoreContribution: 8,
+    status: 'bullish',
+    weight: 0.20,
+    lastUpdated: '10:15',
+    description: 'لیدر اصلی قیمت دلار تهران'
+  },
+  {
+    id: 'nima-exchange-rate',
+    category: 'forex',
+    categoryLabel: 'ارز و تتر',
+    title: 'نرخ دلار نیما / مبادله‌ای',
+    code: 'NIMA_COMMERCIAL_RATE',
+    value: '50,450',
+    unit: 'تومان',
+    scoreContribution: 7,
+    status: 'bullish',
+    weight: 0.15,
+    lastUpdated: '09:45',
+    description: 'نرخ تسعیر واردات و شرکت‌های صادراتی'
+  },
+  {
+    id: 'usdt-bubble-ratio',
+    category: 'forex',
+    categoryLabel: 'ارز و تتر',
+    title: 'حباب تتر نسبت به دلار فیزیکی',
+    code: 'USDT_BUBBLE_PREMIUM',
+    value: '+150',
+    unit: 'تومان',
+    scoreContribution: 7,
+    status: 'bullish',
+    weight: 0.10,
+    lastUpdated: '10:26',
+    description: 'اختلاف قیمت تتر رمزارزی با اسکناس'
+  },
+
+  // Macro & Liquidity (7 items)
+  {
+    id: 'interbank-interest-rate',
+    category: 'macro',
+    categoryLabel: 'کلان و نرخ بهره',
+    title: 'نرخ سود بازار بین‌بانکی',
+    code: 'INTERBANK_RATE_CBI',
+    value: '23.85%',
+    unit: 'درصد سالانه',
+    scoreContribution: 7,
+    status: 'neutral',
+    weight: 0.30,
+    lastUpdated: '08:30',
+    description: 'هزینه استقراض شبانه بانک‌ها نزد بانک مرکزی'
+  },
+  {
+    id: 'repo-interest-rate',
+    category: 'macro',
+    categoryLabel: 'کلان و نرخ بهره',
+    title: 'نرخ توافق بازخرید (ریپو)',
+    code: 'REPO_RATE_CBI',
+    value: '23.0%',
+    unit: 'درصد',
+    scoreContribution: 7,
+    status: 'neutral',
+    weight: 0.25,
+    lastUpdated: '08:30',
+    description: 'عملیات بازار باز بانک مرکزی'
+  },
+  {
+    id: 'm2-money-growth',
+    category: 'macro',
+    categoryLabel: 'کلان و نرخ بهره',
+    title: 'رشد سالانه نقدینگی (M2)',
+    code: 'M2_ANNUAL_GROWTH',
+    value: '26.8%',
+    unit: 'درصد',
+    scoreContribution: 8,
+    status: 'bullish',
+    weight: 0.25,
+    lastUpdated: '08:00',
+    description: 'موتور سوخت تورمی بلندمدت'
+  },
+  {
+    id: 'treasury-yield-ybond',
+    category: 'macro',
+    categoryLabel: 'کلان و نرخ بهره',
+    title: 'بازده اسناد خزانه اسلامی (اخزا)',
+    code: 'YTM_EBR_BONDS',
+    value: '31.4%',
+    unit: 'YTM موثر',
+    scoreContribution: 6,
+    status: 'neutral',
+    weight: 0.20,
+    lastUpdated: '09:30',
+    description: 'نرخ بهره بدون ریسک اوراق دولتی'
+  },
+];
+
+export const initialFunds: FundItem[] = [
+  // Fixed income
+  {
+    id: 'fund-karis',
+    name: 'صندوق با درآمد ثابت کاریس',
+    type: 'fixed_income',
+    typeLabel: 'درآمد ثابت',
+    ticker: 'کاریس',
+    currentAllocationPct: 22,
+    recommendedAllocationPct: 20,
+    navPerUnit: 10420,
+    monthlyReturn: 2.35,
+    quarterlyReturn: 7.4,
+    aumBillionToman: 6850,
+    riskRating: 'low'
+  },
+  {
+    id: 'fund-etemad',
+    name: 'صندوق درآمد ثابت اعتماد آفرین پارسیان',
+    type: 'fixed_income',
+    typeLabel: 'درآمد ثابت',
+    ticker: 'اعتماد',
+    currentAllocationPct: 18,
+    recommendedAllocationPct: 20,
+    navPerUnit: 11200,
+    monthlyReturn: 2.4,
+    quarterlyReturn: 7.6,
+    aumBillionToman: 14200,
+    riskRating: 'low'
+  },
+
+  // Gold funds
+  {
+    id: 'fund-ayar',
+    name: 'صندوق طلای عیار مفید',
+    type: 'gold',
+    typeLabel: 'صندوق طلا',
+    ticker: 'عیار',
+    currentAllocationPct: 18,
+    recommendedAllocationPct: 18,
+    navPerUnit: 24800,
+    monthlyReturn: 8.9,
+    quarterlyReturn: 24.5,
+    aumBillionToman: 9400,
+    riskRating: 'medium'
+  },
+  {
+    id: 'fund-gold-lotos',
+    name: 'صندوق پشتوانه طلای لوتوس',
+    type: 'gold',
+    typeLabel: 'صندوق طلا',
+    ticker: 'طلا',
+    currentAllocationPct: 17,
+    recommendedAllocationPct: 17,
+    navPerUnit: 31200,
+    monthlyReturn: 9.1,
+    quarterlyReturn: 25.1,
+    aumBillionToman: 16800,
+    riskRating: 'medium'
+  },
+
+  // Equity & Leveraged
+  {
+    id: 'fund-ahrom',
+    name: 'صندوق اهرمی کاریزما',
+    type: 'leveraged',
+    typeLabel: 'اهرمی و پرریسک',
+    ticker: 'اهرم',
+    currentAllocationPct: 14,
+    recommendedAllocationPct: 15,
+    navPerUnit: 19800,
+    monthlyReturn: 14.8,
+    quarterlyReturn: 32.0,
+    aumBillionToman: 5200,
+    riskRating: 'very_high'
+  },
+  {
+    id: 'fund-agah-equity',
+    name: 'صندوق سهامی مشترک آگاه / فیروزه',
+    type: 'equity',
+    typeLabel: 'سهامی شاخص‌ساز',
+    ticker: 'فیروزه',
+    currentAllocationPct: 11,
+    recommendedAllocationPct: 10,
+    navPerUnit: 18450,
+    monthlyReturn: 9.4,
+    quarterlyReturn: 18.7,
+    aumBillionToman: 4100,
+    riskRating: 'high'
+  }
+];
+
+export const initialTelegramConfig: TelegramConfig = {
+  botToken: 'bot7492819482:AAH-s1engine_prod_auth_key',
+  channelId: '@SystemS1_Signals',
+  channelName: 'کانال سیگنال و بازتوازن S1',
+  autoSendEnabled: true,
+  autoSendTime: '10:30',
+  includeGauges: true,
+  includeAllocations: true,
+  lastSentTimestamp: '1403/08/15 10:30:15'
+};
+
+export const initialHistoryLogs: SystemHistoryLog[] = [
+  {
+    id: 'log-1',
+    timestamp: '2026-08-21 10:30:00',
+    jalaliDate: '1403/08/15 10:30',
+    action: 'خرید پله‌ای مجاز است',
+    compositeScore: 81,
+    bourseScore: 82,
+    goldScore: 90,
+    btcScore: 58,
+    usdtScore: 81,
+    confidence: '۹/۱۰ (بسیار بالا)',
+    notes: 'تثبیت نقدینگی خرد در صندوق‌های طلا و درآمد ثابت، کاهش ریسک خروج نقدینگی'
+  },
+  {
+    id: 'log-2',
+    timestamp: '2026-08-20 10:30:00',
+    jalaliDate: '1403/08/14 10:30',
+    action: 'صبر و نظاره (Hold)',
+    compositeScore: 68,
+    bourseScore: 65,
+    goldScore: 86,
+    btcScore: 52,
+    usdtScore: 74,
+    confidence: '۸/۱۰ (بالا)',
+    notes: 'نوسانات نرخ بهره بین‌بانکی و اصلاح موقت شاخص کل'
+  },
+  {
+    id: 'log-3',
+    timestamp: '2026-08-19 10:30:00',
+    jalaliDate: '1403/08/13 10:30',
+    action: 'تثبیت سود و افزایش نقدینگی',
+    compositeScore: 55,
+    bourseScore: 50,
+    goldScore: 78,
+    btcScore: 48,
+    usdtScore: 70,
+    confidence: '۸.۵/۱۰',
+    notes: 'افزایش حباب سکه به بالای ۲۴٪ و لزوم شناسایی سود در اهرمی‌ها'
+  }
+];
+
+// ====================================================
+// ۱. پورتفوی کاغذی ۱ میلیارد تومانی (Paper Portfolio 1B Toman)
+// ====================================================
+
+export const initialPortfolioSummary: PortfolioSummary = {
+  initialCapitalToman: 1_000_000_000, // 1 Billion Toman
+  currentValueToman: 1_148_650_000, // +148,650,000 Toman
+  dailyPnlToman: 14_250_000,
+  dailyPnlPct: 1.25,
+  totalPnlToman: 148_650_000,
+  totalPnlPct: 14.86,
+  maxDrawdownPct: -4.18,
+  winRatePct: 76.5,
+  sharpeRatio: 2.45,
+  cashBalanceToman: 50_000_000, // 50M Toman
+  investedValueToman: 1_098_650_000,
+  lastRebalanceDateJalali: '1403/08/15',
+  activePositionsCount: 5,
+};
+
+export const initialPortfolioAssets: PortfolioAssetItem[] = [
+  {
+    id: 'asset-ayar',
+    name: 'صندوق سرمایه‌گذاری طلای عیار',
+    ticker: 'عیار (Ayar)',
+    category: 'gold_etf',
+    categoryLabel: 'صندوق طلا (ETF)',
+    allocatedValueToman: 388_500_000,
+    initialCostToman: 325_000_000,
+    weightPct: 33.8,
+    targetWeightPct: 35.0,
+    unitsCount: 22853,
+    avgBuyPriceToman: 14221,
+    currentPriceToman: 17000,
+    pnlToman: 63_500_000,
+    pnlPct: 19.54,
+    dailyChangePct: 1.85,
+    status: 'profit',
+    color: '#ffb77d',
+  },
+  {
+    id: 'asset-afran',
+    name: 'صندوق درآمد ثابت افران',
+    ticker: 'افران (Afran)',
+    category: 'fixed_income',
+    categoryLabel: 'درآمد ثابت با سود روزشمار',
+    allocatedValueToman: 345_200_000,
+    initialCostToman: 320_000_000,
+    weightPct: 30.1,
+    targetWeightPct: 30.0,
+    unitsCount: 308214,
+    avgBuyPriceToman: 1038,
+    currentPriceToman: 1120,
+    pnlToman: 25_200_000,
+    pnlPct: 7.88,
+    dailyChangePct: 0.08,
+    status: 'profit',
+    color: '#10b981',
+  },
+  {
+    id: 'asset-tavan',
+    name: 'صندوق سهامی اهرمی توان / خبرگان',
+    ticker: 'توان / خبرگان',
+    category: 'equity_etf',
+    categoryLabel: 'صندوق سهامی و اهرمی',
+    allocatedValueToman: 236_450_000,
+    initialCostToman: 195_000_000,
+    weightPct: 20.6,
+    targetWeightPct: 20.0,
+    unitsCount: 94580,
+    avgBuyPriceToman: 2061,
+    currentPriceToman: 2500,
+    pnlToman: 41_450_000,
+    pnlPct: 21.25,
+    dailyChangePct: 2.4,
+    status: 'profit',
+    color: '#96ccff',
+  },
+  {
+    id: 'asset-phys-gold',
+    name: 'طلای آب‌شده / سکه فیزیکی (۱۸ عیار)',
+    ticker: 'طلای فیزیکی (18k)',
+    category: 'physical_gold',
+    categoryLabel: 'طلای فیزیکی و مسکوکات',
+    allocatedValueToman: 128_500_000,
+    initialCostToman: 110_000_000,
+    weightPct: 11.2,
+    targetWeightPct: 10.0,
+    unitsCount: 28.5, // گرم
+    avgBuyPriceToman: 3859649, // قیمت هر گرم
+    currentPriceToman: 4508771,
+    pnlToman: 18_500_000,
+    pnlPct: 16.82,
+    dailyChangePct: 1.45,
+    status: 'profit',
+    color: '#fbbf24',
+  },
+  {
+    id: 'asset-cash',
+    name: 'نقدینگی ریالی و حساب بانکی پشتیبان',
+    ticker: 'نقد / ریال (Cash)',
+    category: 'cash',
+    categoryLabel: 'سپرده نقدی / ریال',
+    allocatedValueToman: 50_000_000,
+    initialCostToman: 50_000_000,
+    weightPct: 4.3,
+    targetWeightPct: 5.0,
+    unitsCount: 50_000_000,
+    avgBuyPriceToman: 1,
+    currentPriceToman: 1,
+    pnlToman: 0,
+    pnlPct: 0.0,
+    dailyChangePct: 0.0,
+    status: 'neutral',
+    color: '#9ca3af',
+  },
+];
+
+export const initialPortfolioHistory: PortfolioHistoryPoint[] = [
+  { dateJalali: '1403/06/15', dateKey: 'Day 1', portfolioValue: 1_000_000_000, portfolioValueMillion: 1000.0, drawdownPct: 0.0, dailyReturnPct: 0.0, benchmarkValueMillion: 1000.0, notes: 'افتتاح پورتفوی با سرمایه پایه ۱ میلیارد تومان' },
+  { dateJalali: '1403/06/20', dateKey: 'Day 5', portfolioValue: 1_012_500_000, portfolioValueMillion: 1012.5, drawdownPct: 0.0, dailyReturnPct: 1.25, benchmarkValueMillion: 1004.0, notes: 'ورود پول به صندوق عیار' },
+  { dateJalali: '1403/06/25', dateKey: 'Day 10', portfolioValue: 1_028_000_000, portfolioValueMillion: 1028.0, drawdownPct: 0.0, dailyReturnPct: 1.53, benchmarkValueMillion: 1009.0 },
+  { dateJalali: '1403/07/01', dateKey: 'Day 15', portfolioValue: 1_019_400_000, portfolioValueMillion: 1019.4, drawdownPct: -0.84, dailyReturnPct: -0.84, benchmarkValueMillion: 1002.0, notes: 'اصلاح موقت بورس' },
+  { dateJalali: '1403/07/05', dateKey: 'Day 20', portfolioValue: 1_011_000_000, portfolioValueMillion: 1011.0, drawdownPct: -1.65, dailyReturnPct: -0.82, benchmarkValueMillion: 994.0 },
+  { dateJalali: '1403/07/10', dateKey: 'Day 25', portfolioValue: 1_042_300_000, portfolioValueMillion: 1042.3, drawdownPct: 0.0, dailyReturnPct: 3.1, benchmarkValueMillion: 1015.0, notes: 'رشد پرقدرت طلا و صندوق عیار' },
+  { dateJalali: '1403/07/15', dateKey: 'Day 30', portfolioValue: 1_065_800_000, portfolioValueMillion: 1065.8, drawdownPct: 0.0, dailyReturnPct: 2.25, benchmarkValueMillion: 1026.0 },
+  { dateJalali: '1403/07/20', dateKey: 'Day 35', portfolioValue: 1_053_200_000, portfolioValueMillion: 1053.2, drawdownPct: -1.18, dailyReturnPct: -1.18, benchmarkValueMillion: 1018.0 },
+  { dateJalali: '1403/07/25', dateKey: 'Day 40', portfolioValue: 1_078_900_000, portfolioValueMillion: 1078.9, drawdownPct: 0.0, dailyReturnPct: 2.44, benchmarkValueMillion: 1035.0, notes: 'سیگنال خرید پله‌ای S1' },
+  { dateJalali: '1403/07/28', dateKey: 'Day 43', portfolioValue: 1_092_400_000, portfolioValueMillion: 1092.4, drawdownPct: 0.0, dailyReturnPct: 1.25, benchmarkValueMillion: 1042.0 },
+  { dateJalali: '1403/08/01', dateKey: 'Day 46', portfolioValue: 1_084_100_000, portfolioValueMillion: 1084.1, drawdownPct: -0.76, dailyReturnPct: -0.76, benchmarkValueMillion: 1038.0 },
+  { dateJalali: '1403/08/05', dateKey: 'Day 50', portfolioValue: 1_115_300_000, portfolioValueMillion: 1115.3, drawdownPct: 0.0, dailyReturnPct: 2.88, benchmarkValueMillion: 1058.0, notes: 'جهش صندوق‌های اهرمی' },
+  { dateJalali: '1403/08/08', dateKey: 'Day 53', portfolioValue: 1_128_600_000, portfolioValueMillion: 1128.6, drawdownPct: 0.0, dailyReturnPct: 1.19, benchmarkValueMillion: 1068.0 },
+  { dateJalali: '1403/08/10', dateKey: 'Day 55', portfolioValue: 1_121_000_000, portfolioValueMillion: 1121.0, drawdownPct: -0.67, dailyReturnPct: -0.67, benchmarkValueMillion: 1062.0 },
+  { dateJalali: '1403/08/12', dateKey: 'Day 57', portfolioValue: 1_134_400_000, portfolioValueMillion: 1134.4, drawdownPct: 0.0, dailyReturnPct: 1.19, benchmarkValueMillion: 1072.0 },
+  { dateJalali: '1403/08/15', dateKey: 'Day 60', portfolioValue: 1_148_650_000, portfolioValueMillion: 1148.65, drawdownPct: 0.0, dailyReturnPct: 1.25, benchmarkValueMillion: 1081.0, notes: 'ثبت بالاترین ارزش دارایی و سود ۱۴.۸۶٪' },
+];
+
+export const initialPortfolioTrades: PortfolioTradeItem[] = [
+  {
+    id: 'tr-1',
+    dateJalali: '1403/08/15 11:20',
+    assetTicker: 'عیار',
+    assetName: 'صندوق طلای عیار',
+    type: 'buy',
+    amountToman: 45_000_000,
+    units: 2647,
+    unitPriceToman: 17000,
+    rationale: 'افزایش وزن طبق سیگنال S1 با توجه به رشد انس جهانی طلا',
+  },
+  {
+    id: 'tr-2',
+    dateJalali: '1403/08/12 09:45',
+    assetTicker: 'توان',
+    assetName: 'صندوق اهرمی توان',
+    type: 'buy',
+    amountToman: 35_000_000,
+    units: 14000,
+    unitPriceToman: 2500,
+    rationale: 'خرید پله‌ای با خروج شاخص کل از کانال نزولی',
+  },
+  {
+    id: 'tr-3',
+    dateJalali: '1403/08/01 12:10',
+    assetTicker: 'افران',
+    assetName: 'صندوق درآمد ثابت افران',
+    type: 'rebalance',
+    amountToman: 20_000_000,
+    units: 18200,
+    unitPriceToman: 1100,
+    rationale: 'تأمین نقدینگی و تثبیت بازدهی ماهانه با سود مؤثر ۳۰٪',
+  },
+];
+
+// ====================================================
+// ۲. اخبار، ریسک‌های سیستماتیک و تحلیل هوش مصنوعی (News & Systemic Risks)
+// ====================================================
+
+export const initialNews: NewsItem[] = [
+  // دسته اول: مهمترین اخبار اقتصاد ایران و جهان
+  {
+    id: 'news-1',
+    category: 'iran_global',
+    categoryLabel: 'اقتصاد ایران و جهان',
+    title: 'تثبیت نرخ بهره فدرال رزرو و سیگنال کاهش در نشست آتی FOMC',
+    source: 'بلومبرگ / وال‌استریت ژورنال',
+    timeJalali: '۲۵ دقیقه پیش',
+    importance: 'critical',
+    sentiment: 'bullish',
+    summary: 'جروم پاول اعلام کرد کنترل تورم به سمت تارگت ۲ درصدی نزدیک شده و احتمال آغاز چرخه انبساط پولی وجود دارد.',
+    impactAnalysis: 'کاهش شاخص DXY و جهش تقاضا در کامودیتی‌ها و انس جهانی طلا به نفع دارایی‌های ضدتورمی ایران.',
+    affectedMarkets: ['طلای جهانی', 'بیت‌کوین', 'کامودیتی'],
+    tags: ['فدرال رزرو', 'نرخ بهره', 'انس جهانی'],
+  },
+  {
+    id: 'news-2',
+    category: 'iran_global',
+    categoryLabel: 'اقتصاد ایران و جهان',
+    title: 'تصویب کلیات لایحه بودجه با رویکرد واقعی‌سازی نرخ ارز ترجیحی',
+    source: 'خبرگزاری ایسنا / سنا',
+    timeJalali: '۱ ساعت پیش',
+    importance: 'high',
+    sentiment: 'bullish',
+    summary: 'مجلس شورای اسلامی بر کاهش رانت ارز ترجیحی و همگرایی نرخ نیما با بازار توافقی تأکید کرد.',
+    impactAnalysis: 'افزایش مستقیم سودآوری شرکت‌های پتروشیمی، فلزی و معدنی در بازار بورس تهران.',
+    affectedMarkets: ['بورس تهران', 'صندوق‌های سهامی'],
+    tags: ['بودجه', 'ارز نیما', 'پتروشیمی'],
+  },
+  {
+    id: 'news-3',
+    category: 'iran_global',
+    categoryLabel: 'اقتصاد ایران و جهان',
+    title: 'افزایش ذخایر استراتژیک طلای بانک‌های مرکزی جهان در ۳ ماهه اخیر',
+    source: 'شورای جهانی طلا (WGC)',
+    timeJalali: '۳ ساعت پیش',
+    importance: 'medium',
+    sentiment: 'bullish',
+    summary: 'بانک‌های مرکزی چین، لهستان و هند خرید طلا را با حجم بی‌سابقه در ماه جاری تداوم بخشیدند.',
+    impactAnalysis: 'ایجاد کف قیمتی بسیار مستحکم بالای ۲۶۵۰ دلار برای انس طلا.',
+    affectedMarkets: ['طلا و مسکوکات', 'صندوق‌های طلا'],
+    tags: ['بانک مرکزی چین', 'طلا'],
+  },
+
+  // دسته دوم: اخبار بازار کریپتو و بورس تهران
+  {
+    id: 'news-4',
+    category: 'crypto_bourse',
+    categoryLabel: 'کریپتو و بورس تهران',
+    title: 'ورود پول حقیقی بیش از ۶۸۰ میلیارد تومانی به سهام شاخص‌ساز و صندوق‌های اهرمی',
+    source: 'مدیریت فناوری بورس تهران (TSETMC)',
+    timeJalali: '۴۰ دقیقه پیش',
+    importance: 'critical',
+    sentiment: 'bullish',
+    summary: 'ارزش معاملات خرد به بالای ۸.۲ همت رسید و سرانه خرید حقیقی به ۲۸ میلیون تومان در مقابل ۱۸ میلیون فروشنده ثبت شد.',
+    impactAnalysis: 'تأیید مومنتوم صعودی کوتاه‌مدت و ورود به فاز انباشت در صندوق‌های توان، اهرم و فیروزه.',
+    affectedMarkets: ['بورس تهران', 'صندوق اهرمی'],
+    tags: ['ارزش معاملات', 'پول هوشمند', 'شاخص کل'],
+  },
+  {
+    id: 'news-5',
+    category: 'crypto_bourse',
+    categoryLabel: 'کریپتو و بورس تهران',
+    title: 'ثبت ورود خالص سرمایه به ETFهای اسپات بیت‌کوین بلک‌راک پس از ۴ روز اصلاح',
+    source: 'Coindesk / Glassnode',
+    timeJalali: '۲ ساعت پیش',
+    importance: 'high',
+    sentiment: 'neutral',
+    summary: 'بیش از ۳۱۰ میلیون دلار سرمایه جدید به IBIT بلک‌راک و فیدلیتی واریز گردید و ذخایر صرافی‌ها کاهش یافت.',
+    impactAnalysis: 'تثبیت بیت‌کوین در حمایت داینامیک و کاهش احتمال ریزش سنگین به زیر کف‌های کلیدی.',
+    affectedMarkets: ['بیت‌کوین', 'تتر'],
+    tags: ['بیت‌کوین', 'BlackRock ETF', 'آنچین'],
+  },
+  {
+    id: 'news-6',
+    category: 'crypto_bourse',
+    categoryLabel: 'کریپتو و بورس تهران',
+    title: 'ترافیک سنگین صدور واحدهای صندوق‌های طلای بورس کالا',
+    source: 'بورس کالای ایران',
+    timeJalali: '۴ ساعت پیش',
+    importance: 'medium',
+    sentiment: 'bullish',
+    summary: 'حجم معاملات صندوق‌های طلا (عیار، طلا، کهربا) از مرز ۱,۴۰۰ میلیارد تومان در یک روز فراتر رفت.',
+    impactAnalysis: 'تمایل قوی سرمایه‌گذاران به پوشش ریسک‌های تورمی با استفاده از ابزارهای بورس کالا.',
+    affectedMarkets: ['صندوق‌های طلا', 'گواهی سپرده سکه'],
+    tags: ['صندوق عیار', 'بورس کالا'],
+  },
+
+  // دسته سوم: تصمیمات بانک مرکزی و سازمان بورس
+  {
+    id: 'news-7',
+    category: 'cbi_seo',
+    categoryLabel: 'بانک مرکزی و سازمان بورس',
+    title: 'دستورالعمل جدید بانک مرکزی برای بازار توافقی ارز و تسهیل تسویه ارزی صادرکنندگان',
+    source: 'روابط عمومی بانک مرکزی (CBI)',
+    timeJalali: '۵۰ دقیقه پیش',
+    importance: 'critical',
+    sentiment: 'bullish',
+    summary: 'امکان خرید و فروش مستقیم ارز توافقی با حاشیه سود رقابتی جهت کاهش انگیزه نگهداری ارز در خارج.',
+    impactAnalysis: 'کاهش شکاف دلار آزاد و نیما و شفافیت در شناسایی سود تسعیر ارز بانک‌ها و شرکت‌های صادرات‌محور.',
+    affectedMarkets: ['دلار نیما', 'گروه بانکی', 'پتروشیمی'],
+    tags: ['ارز توافقی', 'بانک مرکزی', 'فرزین'],
+  },
+  {
+    id: 'news-8',
+    category: 'cbi_seo',
+    categoryLabel: 'بانک مرکزی و سازمان بورس',
+    title: 'ابلاغیه سازمان بورس در خصوص افزایش سقف سرمایه‌گذاری صندوق‌های با درآمد ثابت در سهام',
+    source: 'پایگاه اطلاع‌رسانی سنا (SEO)',
+    timeJalali: '۲ ساعت پیش',
+    importance: 'high',
+    sentiment: 'bullish',
+    summary: 'سقف سرمایه‌گذاری صندوق‌های فیکس اینکام در سهام و حق تقدم تا ۱۵ درصد افزایش یافت.',
+    impactAnalysis: 'تزریق پتانسیل بیش از ۲۰ هزار میلیارد تومان نقدینگی تازه به بازار سرمایه در ماه‌های آینده.',
+    affectedMarkets: ['بورس تهران', 'صندوق‌های درآمد ثابت'],
+    tags: ['سازمان بورس', 'صندوق درآمد ثابت', 'نقدینگی'],
+  },
+  {
+    id: 'news-9',
+    category: 'cbi_seo',
+    categoryLabel: 'بانک مرکزی و سازمان بورس',
+    title: 'کنترل نرخ بهره بین‌بانکی در کانال ۲۳.۷ درصد با عملیات ریپو هدفمند',
+    source: 'معاونت اقتصادی بانک مرکزی',
+    timeJalali: '۵ ساعت پیش',
+    importance: 'medium',
+    sentiment: 'neutral',
+    summary: 'بانک مرکزی با تزریق ۱۱۰ همت در بازار بین‌بانکی مانع از جهش نرخ بهره بدون ریسک شد.',
+    impactAnalysis: 'جلوگیری از خروج پول از بازارهای ریسکی به سمت سپرده‌های منجمد بانکی.',
+    affectedMarkets: ['صندوق‌های افران و کاریس', 'بازار بدهی'],
+    tags: ['ریپو', 'نرخ بهره بین‌بانکی'],
+  },
+
+  // دسته چهارم: وضعیت ریسک‌های سیاسی و نظامی
+  {
+    id: 'news-10',
+    category: 'geopolitical',
+    categoryLabel: 'ریسک‌های سیاسی و نظامی',
+    title: 'گزارش ارزیابی نهادهای دیپلماتیک از تحولات منطقه‌ای و تداوم رایزنی‌های غیرمستقیم',
+    source: 'شورای امنیت / رویترز خاورمیانه',
+    timeJalali: '۱ ساعت پیش',
+    importance: 'high',
+    sentiment: 'neutral',
+    summary: 'سیگنال‌های دیپلماتیک حاکی از مدیریت تنش‌ها در دالان‌های بین‌المللی است، اما سطح آماده‌باش دفاعی در سطح متوسط نگهداری می‌شود.',
+    impactAnalysis: 'کاهش شوک‌های هیجانی ناگهانی، اما ضرورت حفظ حداقل ۳۰٪ دارایی امن طلا و درآمد ثابت به عنوان سپر دفاعی.',
+    affectedMarkets: ['طلا', 'دلار آزاد', 'بورس'],
+    tags: ['ژئوپلیتیک', 'دیپلماسی', 'تنش منطقه‌ای'],
+  },
+];
+
+export const initialSystemicRisks: SystemicRiskItem[] = [
+  {
+    id: 'risk-1',
+    title: 'تنش‌های سیاسی - نظامی منطقه‌ای',
+    category: 'political_military',
+    categoryLabel: 'سیاسی و نظامی',
+    riskLevel: 'high',
+    riskScore: 72,
+    trend: 'stable',
+    summary: 'تنش‌های ژئوپلیتیک و تحولات خاورمیانه همچنان به عنوان متغیر اثرگذار بر حباب سکه و نوسانات نرخ ارز عمل می‌کنند.',
+    keyTriggers: ['رخدادهای نظامی منطقه‌ای', 'بیانیه‌های نهادهای بین‌المللی', 'نوسان نرخ بیمه کشتیرانی خلیج فارس'],
+    mitigationStrategy: 'تخصیص ۳۰ تا ۳۵ درصد از سبد دارایی به صندوق‌های طلا (عیار) و طلای فیزیکی جهت جذب تکانه‌های ناگهانی.',
+    affectedAssets: 'طلای فیزیکی، صندوق عیار، دلار و تتر',
+    lastAssessedJalali: '1403/08/15',
+  },
+  {
+    id: 'risk-2',
+    title: 'سیاست‌های پولی انقباضی و نرخ بهره بین‌بانکی (CBI)',
+    category: 'monetary_cbi',
+    categoryLabel: 'پولی و نرخ بهره',
+    riskLevel: 'moderate',
+    riskScore: 54,
+    trend: 'falling',
+    summary: 'نرخ سود اسناد خزانه (اخزا) در محدوده ۲۹٪ و نرخ بین‌بانکی ۲۳.۷٪ تثبیت شده که جذابیت صندوق‌های درآمد ثابت را بالا نگه می‌دارد.',
+    keyTriggers: ['حراج‌های هفتگی اوراق دولتی', 'سیاست کنترل ترازنامه بانک‌ها', 'نرخ سود سپرده‌های خاص'],
+    mitigationStrategy: 'نگهداری ۳۰٪ از پورتفو در صندوق‌های نقدشونده درآمد ثابت (مانند افران) با بازدهی روزشمار بالای ۳۰٪ مؤثر.',
+    affectedAssets: 'صندوق افران، سهام بانکی و ریالی',
+    lastAssessedJalali: '1403/08/15',
+  },
+  {
+    id: 'risk-3',
+    title: 'نوسانات نرخ ارز و شکاف نیما با بازار آزاد',
+    category: 'exchange_rate',
+    categoryLabel: 'ارزی و تسعیر',
+    riskLevel: 'moderate',
+    riskScore: 58,
+    trend: 'falling',
+    summary: 'با راه‌اندازی بازار توافقی، فاصله نرخ نیما و آزاد رو به کاهش است که ریسک نااطمینانی شرکت‌های صادراتی را کاهش می‌دهد.',
+    keyTriggers: ['عرضه نفت و میعانات در بورس انرژی', 'تحولات بازار حواله دبی', 'مقررات بازگشت ارز صادراتی'],
+    mitigationStrategy: 'تنوع‌بخشی بین دارایی‌های ریالی با سود تضمینی و دارایی‌های با بتا و ضریب همبستگی مثبت به ارز.',
+    affectedAssets: 'سهام صادرات‌محور، صندوق توان، تتر',
+    lastAssessedJalali: '1403/08/15',
+  },
+  {
+    id: 'risk-4',
+    title: 'نوسانات کلان اقتصاد جهانی و تصمیمات فدرال رزرو',
+    category: 'global_macro',
+    categoryLabel: 'کلان جهانی',
+    riskLevel: 'low',
+    riskScore: 35,
+    trend: 'falling',
+    summary: 'احتمال کاهش نرخ بهره فدرال رزرو موجب تضعیف دلار جهانی و تقویت قیمت فلزات اساسی، نفت و طلا شده است.',
+    keyTriggers: ['داده‌های اشتغال غیرکشاورزی آمریکا (NFP)', 'شاخص قیمت مصرف‌کننده (CPI آمریکا)', 'رشد اقتصادی چین'],
+    mitigationStrategy: 'استفاده از مومنتوم انس جهانی طلا در صندوق‌های طلای داخلی.',
+    affectedAssets: 'انس طلا، مس و آلومینیوم، بیت‌کوین',
+    lastAssessedJalali: '1403/08/15',
+  },
+];
+
+export const initialAiDailySummary: AiDailySummary = {
+  regime: 'bullish_expansion',
+  regimePersian: 'انباشت محتاطانه با چاشنی دارایی‌های امن',
+  overallSentimentScore: 78,
+  executiveSummary: `بر اساس تجمیع داده‌های ۴۱ شاخص ورودی، مدل رژیم مارکت در وضعیت «انباشت محتاطانه (Cautious Accumulation)» قرار دارد. ورود ادامه‌دار پول هوشمند به صندوق‌های طلا و هم‌زمان شکست مقاومت‌های کوتاه‌مدت در شاخص کل بورس، فرصت چینش سبد با بازدهی متوازن و ریسک کنترل‌شده را مهیا کرده است. استراتژی برنده حفظ وزن سنگین در دو بال «صندوق‌های طلا (۳۵٪)» و «صندوق‌های درآمد ثابت (۳۰٪)» به عنوان لنگرگاه ثبات، همراه با ۲۰٪ تخصیص تهاجمی به صندوق‌های سهامی/اهرمی و ۱۰٪ طلای فیزیکی است.`,
+  macroEconomicView: `سیاست‌های ارزی اخیر بانک مرکزی در راستای توسعه بازار توافقی و کاهش رانت شکاف نیما با بازار آزاد، چشم‌انداز سودسازی شرکت‌های صادراتی بورس را به طور معناداری بهبود بخشیده است. از سوی دیگر، کنترل نسبی رشد نقدینگی مانع از جهش‌های کنترل‌نشده هیجانی گردیده، اما چسبندگی انتظارات تورمی کماکان طلا را به جذاب‌ترین پناهگاه سرمایه تبدیل کرده است.`,
+  bourseAndCryptoOutlook: `در بازار بورس تهران، افزایش ارزش معاملات خرد به بالای ۸ همت و سرانه خرید مثبت حقوقی‌ها، تداوم روند مثبت کوتاه‌مدت را تأیید می‌کند. صندوق‌های اهرمی (نظیر توان و اهرم) برای معامله‌گران با پذیرش ریسک بالاتر آماده بازدهی مضاعف هستند. در بازار کریپتو، تثبیت بیت‌کوین بالای میانگین‌های ۱۰۰ روزه و مثبت شدن جریان خالص ETFها، سیگنال پایان فاز اصلاح فرسایشی و آمادگی برای یک فاز رالی جدید را مخابره می‌نماید.`,
+  goldAndForexOutlook: `طلا با ثبت بالاترین امتیاز سیستمی (۹۰/۱۰۰) پیشتاز بلامنازع سبد است. هم‌افزایی رشد انس جهانی طلا ناشی از کاهش بازده اوراق قرضه آمریکا و تقاضای پرشور فیزیکی در داخل کشور، صندوق‌های طلا نظیر عیار را در وضعیت سوپر صعودی قرار داده است. با این حال، حباب سکه امامی نیازمند ورود پله‌ای و ترجیح صندوق‌های مبتنی بر شمش به جای سکه فیزیکی با حباب بالا است.`,
+  systemicRisksVerdict: `ریسک‌های سیاسی و منطقه‌ای در سطح «متوسط به بالا (۷۲٪)» ارزیابی می‌شوند اما به دلیل تسلط سازوکارهای تثبیت بازار و پایش مستمر بانک مرکزی، احتمال شوک سیستمی غیرمنتظره کاهش یافته است. در سبد کاغذی ۱ میلیارد تومانی، سپر دفاعی ۳۰ درصدی صندوق افران همراه با ۵٪ نقدینگی، ظرفیت مانور فوق‌العاده‌ای برای خرید در اصلاح‌های احتمالی فراهم کرده است.`,
+  tacticalPlan: [
+    {
+      priority: 1,
+      step: 'تثبیت و حفظ سهم ۳۵ درصدی صندوق طلای عیار',
+      targetAsset: 'صندوق عیار (Ayar)',
+      rationale: 'بهره‌مندی حداکثری از روند صعودی طلا بدون ریسک نگهداری فیزیکی و با نقدشوندگی لحظه‌ای.',
+      timeframe: 'کوتاه‌مدت و میان‌مدت (۱ تا ۳ ماهه)',
+    },
+    {
+      priority: 2,
+      step: 'حفظ لنگر نقدینگی ۳۰ درصدی در صندوق درآمد ثابت افران',
+      targetAsset: 'صندوق افران (Afran)',
+      rationale: 'کسب بازدهی مرکب روزشمار سالانه بالای ۳۰٪ و ایجاد ظرفیت نقدینگی برای خریدهای واکنشی.',
+      timeframe: 'مستمر و پایدار',
+    },
+    {
+      priority: 3,
+      step: 'ورود پله‌ای به صندوق سهامی اهرمی توان در اصلاح‌های روزانه',
+      targetAsset: 'صندوق توان / اهرم',
+      rationale: 'استفاده از اهرم سودآوری با عبور شاخص کل از سطوح مقاومتی و افزایش ارزش معاملات.',
+      timeframe: 'کوتاه‌مدت (۲ تا ۴ هفته)',
+    },
+    {
+      priority: 4,
+      step: 'نگهداری ۱۰ درصد طلای فیزیکی آب‌شده و ۵ درصد نقدینگی ریالی',
+      targetAsset: 'طلای ۱۸ عیار + ریال',
+      rationale: 'بیمه نهایی پورتفو در برابر رویدادهای غیرمترقبه بین‌المللی.',
+      timeframe: 'بلندمدت',
+    },
+  ],
+  keyRules: [
+    'عدم تغییر ناگهانی وزن دارایی‌ها به بیش از ۵٪ در یک روز معاملاتی بدون سیگنال رسمی S1.',
+    'استفاده از ابزارهای بورس کالا به جای خرید فیزیکی با حباب‌های نامتعارف بالای ۲۰٪.',
+    'تنظیم مجدد دوره‌ای (Rebalancing) هفتگی در صورت انحراف وزن دارایی‌ها بیش از ۳٪ از تارگت.',
+    'استفاده از حد ضرر ذهنی و بازتوازن خودکار به سمت درآمد ثابت در صورت سقوط شاخص ترکیبی به زیر ۵۰.',
+  ],
+  aiModelSignature: 'System S1 AI Synthesis Engine v2.4 (Gemini Pro Fine-tuned for Persian Financial Markets)',
+  generatedTimestamp: '1403/08/15 11:30:00',
+};
+
