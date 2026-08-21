@@ -1,1 +1,31 @@
+name: S1 Daily Telegram Reporter
 
+on:
+  schedule:
+    # اجرای خودکار هر روز ساعت ۱۷:۳۰ به وقت ایران (۱۳:۰۰ UTC)
+    - cron: '0 13 * * *'
+  workflow_dispatch: # امکان اجرای دستی از تب Actions
+
+jobs:
+  run-script:
+    runs-runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js / Python
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Execute Report & Send to Telegram
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          # دستور اجرای اسکریپت ارسال داده (مثلاً اجرا با نود یا پایتون)
+          npm run send-report
