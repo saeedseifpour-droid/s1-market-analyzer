@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SystemS1Signal, MarketScoreItem } from '../types';
 import { Play, CheckCircle2, Loader2, RefreshCw, X, ArrowRight, ShieldCheck, Sparkles } from 'lucide-react';
+import { getLiveJalaliDateString, getTehranTimeString } from '../utils/dateHelper';
 
 interface RunNowModalProps {
   isOpen: boolean;
@@ -52,7 +53,7 @@ export const RunNowModal: React.FC<RunNowModalProps> = ({
 
   if (!isOpen) return null;
 
-  const nowJalali = '1403/08/15 ' + new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const nowJalali = `${getLiveJalaliDateString(0, true)} ${getTehranTimeString(true)}:${new Date().getSeconds().toString().padStart(2, '0')}`;
 
   const freshSignal: SystemS1Signal = {
     ...currentSignal,

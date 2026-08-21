@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SystemS1Signal, MarketScoreItem, TelegramConfig } from '../types';
 import {
   Send,
@@ -9,8 +9,11 @@ import {
   Sparkles,
   CheckCircle2,
   FileText,
-  Layers,
-  Radio
+  AlertCircle,
+  Settings,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 interface TelegramModalProps {
@@ -32,6 +35,26 @@ export const TelegramModal: React.FC<TelegramModalProps> = ({
   const [copied, setCopied] = useState<boolean>(false);
   const [isSending, setIsSending] = useState<boolean>(false);
   const [sendSuccess, setSendSuccess] = useState<boolean>(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [showConfig, setShowConfig] = useState<boolean>(false);
+
+  const [botToken, setBotToken] = useState<string>(() => {
+    return localStorage.getItem('S1_TELEGRAM_BOT_TOKEN') || telegramConfig.botToken || '';
+  });
+  const [chatId, setChatId] = useState<string>(() => {
+    return localStorage.getItem('S1_TELEGRAM_CHAT_ID') || telegramConfig.channelId || '';
+  });
+
+  useEffect(() => {
+    if (isOpen) {
+      setSendSuccess(false);
+      setSendError(null);
+      const savedToken = localStorage.getItem('S1_TELEGRAM_BOT_TOKEN');
+      const savedChat = localStorage.getItem('S1_TELEGRAM_CHAT_ID');
+      if (savedToken) setBotToken(savedToken);
+      if (savedChat) setChatId(savedChat);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -61,7 +84,7 @@ export const TelegramModal: React.FC<TelegramModalProps> = ({
 📝 **خلاصه تحلیل تحلیلی:**
 ${signal.summaryText}
 
-🌐 کانال رسمی: ${telegramConfig.channelId}`;
+🌐 کانال رسمی: ${chatId || telegramConfig.channelId}`;
 
   const full13Report = `📋 **گزارش رسمی ۱۳ گانه سیستم مدیریت سرمایه S1 (نسخه ۱.۳)**
 ⏰ پایش روزانه: ساعت ۱۷:۰۰ الی ۱۸:۰۰ • تاریخ: ${signal.lastUpdatedJalali}
@@ -86,7 +109,7 @@ ${signal.summaryText}
 ۴. رمزارزها به دلیل امتیاز زیر ۶۰ در وضعیت عدم اقدام قرار دارند.
 ۵. شاخص ریسک سیستم (SRI) با عدد ۴.۴ وضعیت پایدار را تایید می‌کند.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-کانال رسمی: ${telegramConfig.channelId}`;
+کانال رسمی: ${chatId || telegramConfig.channelId}`;
 
   const currentReportText = reportType === 'quick' ? quickReport : full13Report;
 
@@ -96,16 +119,59 @@ ${signal.summaryText}
     setTimeout(() => setCopied(false), 3000);
   };
 
-  const handleSendToTelegram = () => {
+  const handleSaveCredentials = () => {
+    localStorage.setItem('S1_TELEGRAM_BOT_TOKEN', botToken.trim());
+    localStorage.setItem('S1_TELEGRAM_CHAT_ID', chatId.trim());
+    setShowConfig(false);
+  };
+
+  const handleSendToTelegram = async () => {
+    const activeToken = botToken.trim();
+    const activeChatId = chatId.trim();
+
+    if (!activeToken || !activeChatId) {
+      setSendError('لطفاً توکن ربات و شناسه چت/کانال را در بخش تنظیمات وارد کنید.');
+      setShowConfig(true);
+      return;
+    }
+
     setIsSending(true);
-    setTimeout(() => {
+    setSendError(null);
+    setSendSuccess(false);
+
+    try {
+      // Normalize token if user entered with "bot" prefix
+      const cleanToken = activeToken.startsWith('bot') ? activeToken.slice(3) : activeToken;
+      const url = `https://api.telegram.org/bot${cleanToken}/sendMessage`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chat_id: activeChatId,
+          text: currentReportText,
+          parse_mode: 'Markdown',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.ok) {
+        setSendSuccess(true);
+        localStorage.setItem('S1_TELEGRAM_BOT_TOKEN', activeToken);
+        localStorage.setItem('S1_TELEGRAM_CHAT_ID', activeChatId);
+      } else {
+        const errorDesc = data.description || 'خطا در برقراری ارتباط با سرور تلگرام';
+        setSendError(`پاسخ تلگرام: ${errorDesc}`);
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'خطای ناشناخته در اتصال به اینترنت';
+      setSendError(`خطا در ارسال شبکه: ${errorMessage}`);
+    } finally {
       setIsSending(false);
-      setSendSuccess(true);
-      setTimeout(() => {
-        setSendSuccess(false);
-        onClose();
-      }, 2500);
-    }, 1200);
+    }
   };
 
   return (
@@ -119,10 +185,10 @@ ${signal.summaryText}
             </div>
             <div>
               <h3 className="text-base font-bold text-[#f2dfd3]">
-                ارسال گزارش و سیگنال روز به تلگرام
+                ارسال گزارش زنده به تلگرام
               </h3>
               <p className="text-xs text-[#dbc2b0]/70 font-mono-num">
-                مقصد: {telegramConfig.channelId} ({telegramConfig.channelName})
+                مقصد: {chatId || telegramConfig.channelId}
               </p>
             </div>
           </div>
@@ -140,14 +206,93 @@ ${signal.summaryText}
             <div className="bg-[#10b981]/15 border border-[#10b981]/40 rounded-2xl p-6 text-center space-y-3">
               <CheckCircle2 className="w-12 h-12 text-[#10b981] mx-auto" />
               <h4 className="text-base font-bold text-[#f2dfd3]">
-                پیام با موفقیت به کانال تلگرام ارسال شد!
+                پیام با موفقیت به تلگرام ارسال شد!
               </h4>
               <p className="text-xs text-[#dbc2b0]">
-                پیام در قالب استاندارد Markdown در کانال {telegramConfig.channelId} منتشر شد.
+                گزارش سیستم S1 در مقصد {chatId || telegramConfig.channelId} منتشر شد.
               </p>
+              <div className="pt-2 flex justify-center gap-2">
+                <button
+                  onClick={() => setSendSuccess(false)}
+                  className="px-4 py-2 bg-[#3e332b] text-[#f2dfd3] rounded-xl text-xs font-semibold hover:bg-[#322820]"
+                >
+                  ارسال مجدد یا تغییر متن
+                </button>
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 bg-[#10b981] text-white rounded-xl text-xs font-bold hover:bg-[#059669]"
+                >
+                  بستن پنجره
+                </button>
+              </div>
             </div>
           ) : (
             <>
+              {sendError && (
+                <div className="bg-[#ef4444]/15 border border-[#ef4444]/40 rounded-xl p-3.5 flex items-start gap-2.5 text-xs text-[#fca5a5]">
+                  <AlertCircle className="w-4 h-4 text-[#ef4444] shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-bold">{sendError}</p>
+                    <p className="text-[11px] text-[#dbc2b0]">
+                      راهنما: اطمینان حاصل کنید ربات عضو کانال بوده و دسترسی ارسال پیام (Admin) دارد، یا در چت خصوصی دکمه /start را زده‌اید.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Bot Config Accordion */}
+              <div className="border border-[#554336] rounded-xl overflow-hidden bg-[#1f1711]">
+                <button
+                  onClick={() => setShowConfig(!showConfig)}
+                  className="w-full p-3 flex items-center justify-between text-xs text-[#dbc2b0] hover:text-[#f2dfd3] hover:bg-[#2a1f17] transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Settings className="w-4 h-4 text-[#ffb77d]" />
+                    <span className="font-semibold">تنظیمات توکن و کانال تلگرام (API Key)</span>
+                  </div>
+                  {showConfig ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+
+                {showConfig && (
+                  <div className="p-3.5 border-t border-[#554336] space-y-3 bg-[#18110a] text-xs">
+                    <div>
+                      <label className="block text-[11px] text-[#dbc2b0] mb-1 font-medium">
+                        Telegram Bot Token (از BotFather):
+                      </label>
+                      <input
+                        type="text"
+                        value={botToken}
+                        onChange={(e) => setBotToken(e.target.value)}
+                        placeholder="7492819482:AAH-..."
+                        className="w-full bg-[#271e16] border border-[#554336] rounded-lg px-3 py-2 text-xs text-[#f2dfd3] font-mono focus:outline-none focus:border-[#ffb77d]"
+                        dir="ltr"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] text-[#dbc2b0] mb-1 font-medium">
+                        Chat ID یا شناسه کانال (مثلاً @MyChannel یا عددی):
+                      </label>
+                      <input
+                        type="text"
+                        value={chatId}
+                        onChange={(e) => setChatId(e.target.value)}
+                        placeholder="@SystemS1_Signals یا -100123456789"
+                        className="w-full bg-[#271e16] border border-[#554336] rounded-lg px-3 py-2 text-xs text-[#f2dfd3] font-mono focus:outline-none focus:border-[#ffb77d]"
+                        dir="ltr"
+                      />
+                    </div>
+                    <div className="flex justify-end">
+                      <button
+                        onClick={handleSaveCredentials}
+                        className="px-3 py-1.5 bg-[#ffb77d] text-[#1a120b] rounded-lg font-bold text-xs hover:bg-[#d97707]"
+                      >
+                        ذخیره تنظیمات
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Report Format Selector */}
               <div className="flex bg-[#1a120b] p-1 rounded-xl border border-[#554336] text-xs">
                 <button
@@ -202,17 +347,6 @@ ${signal.summaryText}
                 {currentReportText}
               </div>
 
-              {/* Status info bar */}
-              <div className="bg-[#322820] rounded-xl p-3 flex items-center justify-between text-xs text-[#dbc2b0]">
-                <div className="flex items-center gap-2">
-                  <Bot className="w-4 h-4 text-[#96ccff]" />
-                  <span>ربات خودکار SystemS1_Bot</span>
-                </div>
-                <span className="text-[11px] font-mono-num text-[#10b981]">
-                  وضعیت API: فعال
-                </span>
-              </div>
-
               {/* Action Buttons */}
               <div className="flex items-center gap-3 pt-2">
                 <button
@@ -221,7 +355,7 @@ ${signal.summaryText}
                   className="flex-1 bg-[#0297e8] hover:bg-[#0284c7] text-white py-3 rounded-xl font-bold text-xs shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   <Send className="w-4 h-4" />
-                  {isSending ? 'در حال ارسال پیام...' : 'ارسال فوری به کانال تلگرام'}
+                  {isSending ? 'در حال ارسال به تلگرام...' : 'ارسال زنده به تلگرام (Live Send)'}
                 </button>
 
                 <button

@@ -16,6 +16,12 @@ import {
   DailyChecklistItem,
   S1V13RulebookSection,
 } from './types';
+import {
+  getLiveJalaliDateString,
+  getLiveJalaliVerboseDate,
+  getTehranTimeString,
+  getLiveDateTimeString,
+} from './utils/dateHelper';
 
 export const initialMarketScores: MarketScoreItem[] = [
   {
@@ -191,7 +197,7 @@ export const initialSignal: SystemS1Signal = {
     equityPct: 25,
     cashPct: 0,
   },
-  lastUpdatedJalali: '1403/08/15 10:30:00',
+  lastUpdatedJalali: `${getLiveJalaliDateString(0, true)} ${getTehranTimeString(true)}:00`,
   isLive: true,
   overallScore: 81,
 };
@@ -1107,14 +1113,14 @@ export const initialTelegramConfig: TelegramConfig = {
   autoSendTime: '10:30',
   includeGauges: true,
   includeAllocations: true,
-  lastSentTimestamp: '1403/08/15 10:30:15'
+  lastSentTimestamp: `${getLiveJalaliDateString(0, true)} ${getTehranTimeString(true)}:15`
 };
 
 export const initialHistoryLogs: SystemHistoryLog[] = [
   {
     id: 'log-1',
-    timestamp: '2026-08-21 10:30:00',
-    jalaliDate: '1403/08/15 10:30',
+    timestamp: '2026-08-21 17:00:00',
+    jalaliDate: `${getLiveJalaliDateString(0, true)} 17:00`,
     action: 'خرید پله‌ای مجاز است',
     compositeScore: 81,
     bourseScore: 82,
@@ -1126,8 +1132,8 @@ export const initialHistoryLogs: SystemHistoryLog[] = [
   },
   {
     id: 'log-2',
-    timestamp: '2026-08-20 10:30:00',
-    jalaliDate: '1403/08/14 10:30',
+    timestamp: '2026-08-20 17:00:00',
+    jalaliDate: `${getLiveJalaliDateString(-1, true)} 17:00`,
     action: 'صبر و نظاره (Hold)',
     compositeScore: 68,
     bourseScore: 65,
@@ -1139,8 +1145,8 @@ export const initialHistoryLogs: SystemHistoryLog[] = [
   },
   {
     id: 'log-3',
-    timestamp: '2026-08-19 10:30:00',
-    jalaliDate: '1403/08/13 10:30',
+    timestamp: '2026-08-19 17:00:00',
+    jalaliDate: `${getLiveJalaliDateString(-2, true)} 17:00`,
     action: 'تثبیت سود و افزایش نقدینگی',
     compositeScore: 55,
     bourseScore: 50,
@@ -1281,18 +1287,18 @@ export const initialPortfolioHistory: PortfolioHistoryPoint[] = [
   { dateJalali: '1403/07/20', dateKey: 'Day 35', portfolioValue: 1_053_200_000, portfolioValueMillion: 1053.2, drawdownPct: -1.18, dailyReturnPct: -1.18, benchmarkValueMillion: 1018.0 },
   { dateJalali: '1403/07/25', dateKey: 'Day 40', portfolioValue: 1_078_900_000, portfolioValueMillion: 1078.9, drawdownPct: 0.0, dailyReturnPct: 2.44, benchmarkValueMillion: 1035.0, notes: 'سیگنال خرید پله‌ای S1' },
   { dateJalali: '1403/07/28', dateKey: 'Day 43', portfolioValue: 1_092_400_000, portfolioValueMillion: 1092.4, drawdownPct: 0.0, dailyReturnPct: 1.25, benchmarkValueMillion: 1042.0 },
-  { dateJalali: '1403/08/01', dateKey: 'Day 46', portfolioValue: 1_084_100_000, portfolioValueMillion: 1084.1, drawdownPct: -0.76, dailyReturnPct: -0.76, benchmarkValueMillion: 1038.0 },
-  { dateJalali: '1403/08/05', dateKey: 'Day 50', portfolioValue: 1_115_300_000, portfolioValueMillion: 1115.3, drawdownPct: 0.0, dailyReturnPct: 2.88, benchmarkValueMillion: 1058.0, notes: 'جهش صندوق‌های اهرمی' },
-  { dateJalali: '1403/08/08', dateKey: 'Day 53', portfolioValue: 1_128_600_000, portfolioValueMillion: 1128.6, drawdownPct: 0.0, dailyReturnPct: 1.19, benchmarkValueMillion: 1068.0 },
-  { dateJalali: '1403/08/10', dateKey: 'Day 55', portfolioValue: 1_121_000_000, portfolioValueMillion: 1121.0, drawdownPct: -0.67, dailyReturnPct: -0.67, benchmarkValueMillion: 1062.0 },
-  { dateJalali: '1403/08/12', dateKey: 'Day 57', portfolioValue: 1_134_400_000, portfolioValueMillion: 1134.4, drawdownPct: 0.0, dailyReturnPct: 1.19, benchmarkValueMillion: 1072.0 },
-  { dateJalali: '1403/08/15', dateKey: 'Day 60', portfolioValue: 1_148_650_000, portfolioValueMillion: 1148.65, drawdownPct: 0.0, dailyReturnPct: 1.25, benchmarkValueMillion: 1081.0, notes: 'ثبت بالاترین ارزش دارایی و سود ۱۴.۸۶٪' },
+  { dateJalali: getLiveJalaliDateString(-15, true), dateKey: 'Day 46', portfolioValue: 1_084_100_000, portfolioValueMillion: 1084.1, drawdownPct: -0.76, dailyReturnPct: -0.76, benchmarkValueMillion: 1038.0 },
+  { dateJalali: getLiveJalaliDateString(-10, true), dateKey: 'Day 50', portfolioValue: 1_115_300_000, portfolioValueMillion: 1115.3, drawdownPct: 0.0, dailyReturnPct: 2.88, benchmarkValueMillion: 1058.0, notes: 'جهش صندوق‌های اهرمی' },
+  { dateJalali: getLiveJalaliDateString(-7, true), dateKey: 'Day 53', portfolioValue: 1_128_600_000, portfolioValueMillion: 1128.6, drawdownPct: 0.0, dailyReturnPct: 1.19, benchmarkValueMillion: 1068.0 },
+  { dateJalali: getLiveJalaliDateString(-5, true), dateKey: 'Day 55', portfolioValue: 1_121_000_000, portfolioValueMillion: 1121.0, drawdownPct: -0.67, dailyReturnPct: -0.67, benchmarkValueMillion: 1062.0 },
+  { dateJalali: getLiveJalaliDateString(-3, true), dateKey: 'Day 57', portfolioValue: 1_134_400_000, portfolioValueMillion: 1134.4, drawdownPct: 0.0, dailyReturnPct: 1.19, benchmarkValueMillion: 1072.0 },
+  { dateJalali: getLiveJalaliDateString(0, true), dateKey: 'Day 60', portfolioValue: 1_148_650_000, portfolioValueMillion: 1148.65, drawdownPct: 0.0, dailyReturnPct: 1.25, benchmarkValueMillion: 1081.0, notes: 'ثبت بالاترین ارزش دارایی و سود ۱۴.۸۶٪' },
 ];
 
 export const initialPortfolioTrades: PortfolioTradeItem[] = [
   {
     id: 'tr-1',
-    dateJalali: '1403/08/15 11:20',
+    dateJalali: `${getLiveJalaliDateString(0, true)} 11:20`,
     assetTicker: 'عیار',
     assetName: 'صندوق طلای عیار',
     type: 'buy',
@@ -1303,7 +1309,7 @@ export const initialPortfolioTrades: PortfolioTradeItem[] = [
   },
   {
     id: 'tr-2',
-    dateJalali: '1403/08/12 09:45',
+    dateJalali: `${getLiveJalaliDateString(-2, true)} 09:45`,
     assetTicker: 'توان',
     assetName: 'صندوق اهرمی توان',
     type: 'buy',
@@ -1314,7 +1320,7 @@ export const initialPortfolioTrades: PortfolioTradeItem[] = [
   },
   {
     id: 'tr-3',
-    dateJalali: '1403/08/01 12:10',
+    dateJalali: `${getLiveJalaliDateString(-6, true)} 12:10`,
     assetTicker: 'افران',
     assetName: 'صندوق درآمد ثابت افران',
     type: 'rebalance',
@@ -1534,7 +1540,7 @@ export const initialSystemicRisks: SystemicRiskItem[] = [
     keyTriggers: ['داده‌های اشتغال غیرکشاورزی آمریکا (NFP)', 'شاخص قیمت مصرف‌کننده (CPI آمریکا)', 'رشد اقتصادی چین'],
     mitigationStrategy: 'استفاده از مومنتوم انس جهانی طلا در صندوق‌های طلای داخلی.',
     affectedAssets: 'انس طلا، مس و آلومینیوم، بیت‌کوین',
-    lastAssessedJalali: '1403/08/15',
+    lastAssessedJalali: getLiveJalaliDateString(0, true),
   },
 ];
 
@@ -1584,6 +1590,6 @@ export const initialAiDailySummary: AiDailySummary = {
     'استفاده از حد ضرر ذهنی و بازتوازن خودکار به سمت درآمد ثابت در صورت سقوط شاخص ترکیبی به زیر ۵۰.',
   ],
   aiModelSignature: 'System S1 AI Synthesis Engine v2.4 (Gemini Pro Fine-tuned for Persian Financial Markets)',
-  generatedTimestamp: '1403/08/15 11:30:00',
+  generatedTimestamp: `${getLiveJalaliDateString(0, true)} ${getTehranTimeString(true)}:00`,
 };
 
