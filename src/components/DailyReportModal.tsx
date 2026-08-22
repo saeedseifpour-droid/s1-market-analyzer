@@ -6,20 +6,10 @@ import {
   X,
   Send,
   Printer,
-  TrendingUp,
-  Coins,
-  ShieldCheck,
-  AlertTriangle,
-  Scale,
-  CheckCircle2,
-  Calendar,
+  Table,
+  Search,
   Layers,
   Sparkles,
-  ExternalLink,
-  ChevronDown,
-  ChevronUp,
-  Table,
-  Search
 } from 'lucide-react';
 import {
   SystemS1Signal,
@@ -30,7 +20,11 @@ import {
   SRIModel,
   AiDailySummary
 } from '../types';
-import { formatFull13Report, formatDailyInputsSheetReport } from '../telegram_reporter';
+import {
+  formatFull13Report,
+  formatDailyInputsSheetReport,
+  formatStandardDailyInputTemplate
+} from '../telegram_reporter';
 
 interface DailyReportModalProps {
   isOpen: boolean;
@@ -57,7 +51,7 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
   aiSummary,
   onOpenTelegram,
 }) => {
-  const [activeTab, setActiveTab] = useState<'report13' | 'inputsSheet'>('report13');
+  const [activeTab, setActiveTab] = useState<'dailyInput' | 'report13' | 'inputsSheet'>('dailyInput');
   const [copied, setCopied] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -71,9 +65,24 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
     trades,
   };
 
+  const dailyInputMarkdown = formatStandardDailyInputTemplate(payload);
   const full13Markdown = formatFull13Report(payload);
   const inputsSheetMarkdown = formatDailyInputsSheetReport(payload);
-  const currentMarkdown = activeTab === 'report13' ? full13Markdown : inputsSheetMarkdown;
+
+  const getCurrentMarkdown = () => {
+    switch (activeTab) {
+      case 'dailyInput':
+        return dailyInputMarkdown;
+      case 'report13':
+        return full13Markdown;
+      case 'inputsSheet':
+        return inputsSheetMarkdown;
+      default:
+        return dailyInputMarkdown;
+    }
+  };
+
+  const currentMarkdown = getCurrentMarkdown();
 
   const handleCopy = () => {
     navigator.clipboard.writeText(currentMarkdown);
@@ -106,10 +115,10 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base sm:text-lg font-bold text-[#f2dfd3]">
-                  گزارش رسمی پایش روزانه و برگه داده‌های ورودی S1
+                  فرم دیلی اینپوت و گزارش رسمی پایش S1
                 </h3>
                 <span className="px-2.5 py-0.5 rounded-md bg-[#10b981]/20 text-[#10b981] text-xs font-mono font-bold">
-                  v1.3 Active
+                  S1 VERSION 1.3
                 </span>
               </div>
               <p className="text-xs text-[#dbc2b0]/70 mt-0.5 font-mono-num">
@@ -130,7 +139,7 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
             <button
               onClick={handleCopy}
               className="p-2 rounded-xl text-[#ffb77d] hover:bg-[#322820] border border-[#ffb77d]/30 flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
-              title="کپی متن کامل مارک‌داون"
+              title="کپی متن کامل"
             >
               {copied ? (
                 <>
@@ -140,7 +149,7 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
               ) : (
                 <>
                   <Copy className="w-4 h-4" />
-                  <span>کپی مارک‌داون</span>
+                  <span>کپی متن</span>
                 </>
               )}
             </button>
@@ -155,7 +164,19 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
 
         {/* View Switcher Tabs */}
         <div className="px-5 py-3 bg-[#1e150f] border-b border-[#554336] flex items-center justify-between gap-4 flex-wrap">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setActiveTab('dailyInput')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                activeTab === 'dailyInput'
+                  ? 'bg-[#ffb77d] text-[#1a120b] shadow-md'
+                  : 'bg-[#271e16] text-[#dbc2b0] hover:bg-[#322820]'
+              }`}
+            >
+              <Layers className="w-4 h-4" />
+              ۱. فرم دیلی اینپوت استاندارد (۱۳ بخش کامل)
+            </button>
+
             <button
               onClick={() => setActiveTab('report13')}
               className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
@@ -165,7 +186,7 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
               }`}
             >
               <FileText className="w-4 h-4" />
-              گزارش رسمی ۱۳ گانه S1
+              ۲. گزارش تصمیم، امتیازدهی و تخصیص پورتفوی
             </button>
 
             <button
@@ -177,7 +198,7 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
               }`}
             >
               <Table className="w-4 h-4" />
-              برگه ورودی‌های روزانه و منابع استخراج ({inputs.length} پارامتر)
+              جدول مرجع شاخص‌ها ({inputs.length})
             </button>
           </div>
 
@@ -186,13 +207,17 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
             className="px-4 py-2 bg-[#0297e8] hover:bg-[#0284c7] text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer"
           >
             <Send className="w-4 h-4" />
-            ارسال مستقیم به تلگرام
+            ارسال ۲ مرحله‌ای به تلگرام
           </button>
         </div>
 
         {/* Scrollable Body */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1">
-          {activeTab === 'report13' ? (
+          {activeTab === 'dailyInput' ? (
+            <div className="bg-[#18110a] border border-[#554336] rounded-xl p-5 font-mono text-xs sm:text-sm text-[#f2dfd3] whitespace-pre-wrap leading-relaxed select-text shadow-inner">
+              {dailyInputMarkdown}
+            </div>
+          ) : activeTab === 'report13' ? (
             <div className="bg-[#18110a] border border-[#554336] rounded-xl p-5 font-mono text-xs sm:text-sm text-[#f2dfd3] whitespace-pre-wrap leading-relaxed select-text shadow-inner">
               {full13Markdown}
             </div>

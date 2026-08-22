@@ -621,6 +621,70 @@ export async function sendTelegramMessage(
 }
 
 /**
+ * Send Dual Pipeline to Telegram (Message 1: Complete Daily Input -> Message 2: Scoring & Asset Entry Decision Report)
+ */
+export async function sendDualTelegramPipeline(
+  payload: TelegramReportPayload,
+  botToken?: string,
+  chatId?: string,
+  aiAnalysisText?: string,
+  onProgress?: (step: 1 | 2, status: 'sending' | 'success' | 'failed', error?: string) => void
+): Promise<{ success: boolean; step1: any; step2: any; error?: string }> {
+  const token = botToken || process.env.TELEGRAM_BOT_TOKEN;
+  const chat = chatId || process.env.TELEGRAM_CHAT_ID || initialTelegramConfig.channelId;
+
+  if (!token || !chat) {
+    return {
+      success: false,
+      step1: null,
+      step2: null,
+      error: 'توکن ربات یا شناسه کانال تلگرام مشخص نشده است.',
+    };
+  }
+
+  // Step 1: Format & Send Daily Input (13 Sections)
+  const dailyInputText = formatStandardDailyInputTemplate(payload);
+  onProgress?.(1, 'sending');
+  const res1 = await sendTelegramMessage(dailyInputText, token, chat);
+
+  if (!res1.success) {
+    onProgress?.(1, 'failed', res1.error);
+    return {
+      success: false,
+      step1: res1,
+      step2: null,
+      error: `خطا در ارسال پیام اول (دیلی اینپوت): ${res1.error}`,
+    };
+  }
+  onProgress?.(1, 'success');
+
+  // Pause briefly before sending Step 2
+  await new Promise((r) => setTimeout(r, 800));
+
+  // Step 2: Format & Send S1 Official Decision & Asset Allocation Report (13 Points)
+  const decisionReportText = formatFull13Report(payload, aiAnalysisText);
+  onProgress?.(2, 'sending');
+  const res2 = await sendTelegramMessage(decisionReportText, token, chat);
+
+  if (!res2.success) {
+    onProgress?.(2, 'failed', res2.error);
+    return {
+      success: false,
+      step1: res1,
+      step2: res2,
+      error: `پیام اول (دیلی اینپوت) ارسال شد، اما خطا در ارسال پیام دوم (گزارش تصمیم و امتیازدهی): ${res2.error}`,
+    };
+  }
+  onProgress?.(2, 'success');
+
+  return {
+    success: true,
+    step1: res1,
+    step2: res2,
+  };
+}
+
+/**
  * Main execution handler to process data, generate Gemini analysis, and broadcast to Telegram
  */
 export async function executeDailyReport(options?: {
