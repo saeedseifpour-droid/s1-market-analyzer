@@ -5,7 +5,9 @@ import {
   InputMetric,
   PortfolioAssetItem,
   PortfolioTradeItem,
-  TelegramConfig
+  TelegramConfig,
+  StandardDailyInput13Sections,
+  ValidationAuditReport,
 } from '../types';
 import {
   Send,
@@ -22,6 +24,7 @@ import {
   Table,
   Zap,
   Layers,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   formatFull13Report,
@@ -41,6 +44,8 @@ interface TelegramModalProps {
   assets: PortfolioAssetItem[];
   trades: PortfolioTradeItem[];
   telegramConfig: TelegramConfig;
+  daily13Sections?: StandardDailyInput13Sections;
+  auditReport?: ValidationAuditReport | null;
 }
 
 export const TelegramModal: React.FC<TelegramModalProps> = ({
@@ -52,6 +57,8 @@ export const TelegramModal: React.FC<TelegramModalProps> = ({
   assets,
   trades,
   telegramConfig,
+  daily13Sections,
+  auditReport,
 }) => {
   const [reportType, setReportType] = useState<'dual' | 'dailyInput' | 'full13' | 'quick'>('dual');
   const [dualActivePreview, setDualActivePreview] = useState<'msg1' | 'msg2'>('msg1');
@@ -91,6 +98,8 @@ export const TelegramModal: React.FC<TelegramModalProps> = ({
     inputs,
     assets,
     trades,
+    daily13Sections,
+    auditReport,
   };
 
   const dailyInputText = formatStandardDailyInputTemplate(payload);

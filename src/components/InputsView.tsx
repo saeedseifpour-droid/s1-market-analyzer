@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
-import { InputMetric, DailyChecklistItem } from '../types';
+import {
+  InputMetric,
+  DailyChecklistItem,
+  StandardDailyInput13Sections,
+  ValidationAuditReport,
+} from '../types';
 import {
   Search,
   Filter,
@@ -29,12 +34,18 @@ interface InputsViewProps {
   inputs: InputMetric[];
   onUpdateInputs: (updatedInputs: InputMetric[]) => void;
   onRecalculateEngine: (inputs: InputMetric[]) => void;
+  daily13Sections?: StandardDailyInput13Sections;
+  auditReport?: ValidationAuditReport | null;
+  onOpenValidationCore?: () => void;
 }
 
 export const InputsView: React.FC<InputsViewProps> = ({
   inputs,
   onUpdateInputs,
   onRecalculateEngine,
+  daily13Sections,
+  auditReport,
+  onOpenValidationCore,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -250,6 +261,40 @@ export const InputsView: React.FC<InputsViewProps> = ({
             </div>
           ))}
         </div>
+      </div>
+
+      {/* S1 Validation Core Status Banner */}
+      <div className="bg-[#1a281e] border border-[#10b981]/40 rounded-2xl p-4 shadow-xl flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/30">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-[#f2dfd3]">
+                هسته اعتبارسنجی و ممیزی ریاضی داده‌ها (S1 Validation Core)
+              </h3>
+              <span className="bg-[#10b981]/25 text-[#10b981] border border-[#10b981]/40 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono-num">
+                {auditReport ? `${auditReport.confidencePercentage}٪ تایید شده` : 'آماده ممیزی زنده'}
+              </span>
+            </div>
+            <p className="text-xs text-[#dbc2b0]/80 mt-0.5">
+              {auditReport
+                ? auditReport.summaryMessageFa
+                : 'آزمون‌های خودکار اونس طلا، حباب سکه، برابری تتر و انحراف NAV روی تمام داده‌ها فعال است.'}
+            </p>
+          </div>
+        </div>
+
+        {onOpenValidationCore && (
+          <button
+            onClick={onOpenValidationCore}
+            className="bg-[#10b981] text-[#052e16] px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-[#059669] transition-all shadow-md active:scale-95 cursor-pointer"
+          >
+            <ShieldCheck className="w-4 h-4" />
+            مشاهده گزارش کامل ممیزی و فرمول‌ها
+          </button>
+        )}
       </div>
 
       {/* 2. Form Actions Bar */}

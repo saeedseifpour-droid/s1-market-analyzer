@@ -18,7 +18,9 @@ import {
   PortfolioAssetItem,
   PortfolioTradeItem,
   SRIModel,
-  AiDailySummary
+  AiDailySummary,
+  StandardDailyInput13Sections,
+  ValidationAuditReport,
 } from '../types';
 import {
   formatFull13Report,
@@ -37,6 +39,8 @@ interface DailyReportModalProps {
   sri?: SRIModel;
   aiSummary?: AiDailySummary;
   onOpenTelegram: () => void;
+  daily13Sections?: StandardDailyInput13Sections;
+  auditReport?: ValidationAuditReport | null;
 }
 
 export const DailyReportModal: React.FC<DailyReportModalProps> = ({
@@ -50,6 +54,8 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
   sri,
   aiSummary,
   onOpenTelegram,
+  daily13Sections,
+  auditReport,
 }) => {
   const [activeTab, setActiveTab] = useState<'dailyInput' | 'report13' | 'inputsSheet'>('dailyInput');
   const [copied, setCopied] = useState<boolean>(false);
@@ -63,6 +69,8 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
     inputs,
     assets,
     trades,
+    daily13Sections,
+    auditReport,
   };
 
   const dailyInputMarkdown = formatStandardDailyInputTemplate(payload);

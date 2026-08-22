@@ -286,4 +286,190 @@ export interface S1V13RulebookSection {
   }[];
 }
 
+// ----------------------------------------------------
+// S1 Validation Core & 13-Section Daily Input Types
+// ----------------------------------------------------
+export type ValidationStatus = 'VALIDATED' | 'CROSS_CHECKED' | 'BOUNDED_CORRECTED' | 'WARNING';
+
+export interface ValidationAuditCheck {
+  id: string;
+  title: string;
+  category: string;
+  formulaDescription: string;
+  status: 'passed' | 'warning' | 'corrected';
+  theoreticalValue?: string | number;
+  actualMarketValue?: string | number;
+  toleranceApplied?: string;
+  note: string;
+}
+
+export interface ValidationAuditReport {
+  timestampJalali: string;
+  overallQualityScore: number; // e.g. 41 / 41
+  confidencePercentage: number; // e.g. 99.2%
+  coreValidationStatus: 'VERIFIED_PERFECT' | 'VERIFIED_WITH_ADJUSTMENTS' | 'OFFLINE_FALLBACK';
+  checks: ValidationAuditCheck[];
+  sourcesConsulted: { name: string; domain: string; status: string; recordsExtracted: number }[];
+  summaryMessageFa: string;
+}
+
+export interface StandardDailyInput13Sections {
+  metadata: {
+    jalaliDate: string;
+    miladiDate: string;
+    dayOfWeek: string;
+    updateTime: string;
+    s1EngineVersion: string;
+  };
+  section1_iranMacro: {
+    usdFree: string;
+    usdYesterday: string;
+    usdChangePct: string;
+    usdt: string;
+    usdtYesterday: string;
+    usdtChangePct: string;
+    gold18k: string;
+    gold18kYesterday: string;
+    gold18kChangePct: string;
+    sekeEmami: string;
+    sekeYesterday: string;
+    sekeChangePct: string;
+    coinBubble: string;
+    econNews: string;
+  };
+  section2_globalMarkets: {
+    goldOunce: string;
+    ounceYesterday: string;
+    ounceChangePct: string;
+    dxy: string;
+    dxyChangePct: string;
+    brentOil: string;
+    brentChangePct: string;
+    vix: string;
+    vixChangePct: string;
+    globalFearGreed: string;
+    globalNews: string;
+  };
+  section3_crypto: {
+    btcPrice: string;
+    btcYesterday: string;
+    btcChangePct: string;
+    ethPrice: string;
+    ethChangePct: string;
+    btcDominance: string;
+    marketCap: string;
+    etfFlow: string;
+    etfFlowAmount: string;
+    fundingRate: string;
+    openInterest: string;
+    cryptoFearGreed: string;
+    cryptoNews: string;
+  };
+  section4_bourse: {
+    tseIndex: string;
+    tseYesterday: string;
+    tseIndexChangePct: string;
+    tseEqualWeight: string;
+    tseEqualWeightChangePct: string;
+    retailVolume: string;
+    realMoneyFlow: string;
+    positiveSymbolsCount: string;
+    negativeSymbolsCount: string;
+    buyQueueCount: string;
+    buyQueueValue: string;
+    sellQueueCount: string;
+    sellQueueValue: string;
+    marketNews: string;
+  };
+  section5_afranFund: {
+    closingPrice: string;
+    navPerUnit: string;
+    navDiffPct: string;
+    volumeUnits: string;
+    valueBillionToman: string;
+    moneyFlow: string;
+    perCapitaBuy: string;
+    perCapitaSell: string;
+    buyerPower: string;
+    aum: string;
+  };
+  section6_ayarFund: {
+    closingPrice: string;
+    navPerUnit: string;
+    navDiffPct: string;
+    volumeUnits: string;
+    valueBillionToman: string;
+    moneyFlow: string;
+    perCapitaBuy: string;
+    perCapitaSell: string;
+    buyerPower: string;
+    aum: string;
+  };
+  section7_khebarganFund: {
+    closingPrice: string;
+    yesterdayPrice: string;
+    changePct: string;
+    navPerUnit: string;
+    navDiffPct: string;
+    volumeUnits: string;
+    valueBillionToman: string;
+    moneyFlow: string;
+    perCapitaBuy: string;
+    perCapitaSell: string;
+    buyerPower: string;
+  };
+  section8_tavanFund: {
+    closingPrice: string;
+    navPerUnit: string;
+    navDiffPct: string;
+    volumeUnits: string;
+    valueBillionToman: string;
+    moneyFlow: string;
+    perCapitaBuy: string;
+    perCapitaSell: string;
+    buyerPower: string;
+  };
+  section9_otherGoldFunds: {
+    ayar: string;
+    kahroba: string;
+    zar: string;
+    gohar: string;
+    nafis: string;
+    mesghal: string;
+  };
+  section10_leveragedFunds: {
+    ahrom: string;
+    tavan: string;
+    moj: string;
+    shetab: string;
+    bidar: string;
+    jahesh: string;
+    doX: string;
+  };
+  section11_silverFunds: {
+    silver: string;
+    noghrein: string;
+    noghrabi: string;
+  };
+  section12_systematicRisks: {
+    riskPolitical: string;
+    riskMilitary: string;
+    riskEconomic: string;
+    riskGlobal: string;
+    riskCrypto: string;
+    cbiDecisions: string;
+    seoDecisions: string;
+    domesticNews: string;
+    internationalNews: string;
+  };
+  section13_liquidityFlow: {
+    flowBourse: string;
+    flowGoldFunds: string;
+    flowFixedIncome: string;
+    flowEquityFunds: string;
+    flowLeveragedFunds: string;
+    flowCrypto: string;
+  };
+}
+
 

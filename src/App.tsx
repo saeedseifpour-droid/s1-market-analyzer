@@ -14,6 +14,8 @@ import {
   NewsItem,
   SystemicRiskItem,
   AiDailySummary,
+  StandardDailyInput13Sections,
+  ValidationAuditReport,
 } from './types';
 import {
   initialMarketScores,
@@ -44,12 +46,19 @@ import { RunNowModal } from './components/RunNowModal';
 import { TelegramModal } from './components/TelegramModal';
 import { DailyReportModal } from './components/DailyReportModal';
 import { MarketDetailsModal } from './components/MarketDetailsModal';
+import { ValidationCoreModal } from './components/ValidationCoreModal';
+import { getDefault13SectionsData, runS1ValidationCore } from './utils/s1ValidationCore';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [marketScores, setMarketScores] = useState<MarketScoreItem[]>(initialMarketScores);
   const [signal, setSignal] = useState<SystemS1Signal>(initialSignal);
   const [inputs, setInputs] = useState<InputMetric[]>(initialDailyInputs);
+  const [daily13Sections, setDaily13Sections] = useState<StandardDailyInput13Sections>(getDefault13SectionsData);
+  const [auditReport, setAuditReport] = useState<ValidationAuditReport | null>(() => {
+    const initialReport = runS1ValidationCore(initialDailyInputs, getDefault13SectionsData());
+    return initialReport.auditReport;
+  });
   const [funds, setFunds] = useState<FundItem[]>(initialFunds);
   const [telegramConfig, setTelegramConfig] = useState<TelegramConfig>(initialTelegramConfig);
   const [historyLogs, setHistoryLogs] = useState<SystemHistoryLog[]>(initialHistoryLogs);
@@ -69,6 +78,7 @@ export default function App() {
   const [isRunNowModalOpen, setIsRunNowModalOpen] = useState<boolean>(false);
   const [isTelegramModalOpen, setIsTelegramModalOpen] = useState<boolean>(false);
   const [isDailyReportModalOpen, setIsDailyReportModalOpen] = useState<boolean>(false);
+  const [isValidationCoreModalOpen, setIsValidationCoreModalOpen] = useState<boolean>(false);
   const [selectedMarketForModal, setSelectedMarketForModal] = useState<MarketScoreItem | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
@@ -204,11 +214,22 @@ export default function App() {
     setSignal(updatedSignal);
   };
 
-  const handleApplyFreshSignal = (freshSignal: SystemS1Signal, newInputs?: InputMetric[]) => {
+  const handleApplyFreshSignal = (
+    freshSignal: SystemS1Signal,
+    newInputs?: InputMetric[],
+    new13Sections?: StandardDailyInput13Sections,
+    newAudit?: ValidationAuditReport
+  ) => {
     setSignal(freshSignal);
     if (newInputs && newInputs.length > 0) {
       setInputs(newInputs);
       handleRecalculateEngine(newInputs);
+    }
+    if (new13Sections) {
+      setDaily13Sections(new13Sections);
+    }
+    if (newAudit) {
+      setAuditReport(newAudit);
     }
     // Add to history log
     const newLog: SystemHistoryLog = {
@@ -225,6 +246,12 @@ export default function App() {
       notes: freshSignal.summaryText,
     };
     setHistoryLogs([newLog, ...historyLogs]);
+  };
+
+  const handleRevalidateCore = () => {
+    const validated = runS1ValidationCore(inputs, daily13Sections);
+    setAuditReport(validated.auditReport);
+    setDaily13Sections(validated.validated13Sections);
   };
 
   return (
@@ -289,6 +316,9 @@ export default function App() {
               inputs={inputs}
               onUpdateInputs={(updated) => setInputs(updated)}
               onRecalculateEngine={handleRecalculateEngine}
+              daily13Sections={daily13Sections}
+              auditReport={auditReport}
+              onOpenValidationCore={() => setIsValidationCoreModalOpen(true)}
             />
           )}
 
@@ -319,6 +349,7 @@ export default function App() {
         currentSignal={signal}
         marketScores={marketScores}
         inputs={inputs}
+        current13Sections={daily13Sections}
       />
 
       <TelegramModal
@@ -330,6 +361,8 @@ export default function App() {
         assets={portfolioAssets}
         trades={portfolioTrades}
         telegramConfig={telegramConfig}
+        daily13Sections={daily13Sections}
+        auditReport={auditReport}
       />
 
       <DailyReportModal
@@ -342,10 +375,20 @@ export default function App() {
         trades={portfolioTrades}
         sri={initialSRI}
         aiSummary={aiDailySummary}
+        daily13Sections={daily13Sections}
+        auditReport={auditReport}
         onOpenTelegram={() => {
           setIsDailyReportModalOpen(false);
           setIsTelegramModalOpen(true);
         }}
+      />
+
+      <ValidationCoreModal
+        isOpen={isValidationCoreModalOpen}
+        onClose={() => setIsValidationCoreModalOpen(false)}
+        auditReport={auditReport}
+        daily13Sections={daily13Sections}
+        onRevalidate={handleRevalidateCore}
       />
 
       <MarketDetailsModal

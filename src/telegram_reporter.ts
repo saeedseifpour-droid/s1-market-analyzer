@@ -17,6 +17,8 @@ import {
   PortfolioAssetItem,
   PortfolioTradeItem,
   SRIModel,
+  StandardDailyInput13Sections,
+  ValidationAuditReport,
 } from './types';
 
 export interface TelegramReportPayload {
@@ -26,6 +28,8 @@ export interface TelegramReportPayload {
   assets: PortfolioAssetItem[];
   trades: PortfolioTradeItem[];
   sri?: SRIModel;
+  daily13Sections?: StandardDailyInput13Sections;
+  auditReport?: ValidationAuditReport;
 }
 
 /**
@@ -274,18 +278,182 @@ function splitMessageIntoChunks(text: string, maxLen = 3900): string[] {
  * Format the standard 13-Section DAILY INPUT Template (S1 Version 1.3)
  */
 export function formatStandardDailyInputTemplate(payload: TelegramReportPayload): string {
-  const { signal, inputs } = payload;
-  const jalaliDate = signal.lastUpdatedJalali?.split(' ')[0] || '۱۴۰۴/۱۲/۰۲';
+  const { signal, inputs, daily13Sections } = payload;
+  const d = daily13Sections;
+
+  const jalaliDate = d?.metadata?.jalaliDate || signal.lastUpdatedJalali?.split(' ')[0] || '۱۴۰۴/۱۲/۰۲';
   const now = new Date();
-  const miladiDate = now.toISOString().split('T')[0];
+  const miladiDate = d?.metadata?.miladiDate || now.toISOString().split('T')[0];
   const weekDays = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه', 'شنبه'];
-  const dayName = weekDays[now.getDay()];
+  const dayName = d?.metadata?.dayOfWeek || weekDays[now.getDay()];
 
   const getV = (id: string, fallback: string = '-') => {
     const item = inputs?.find((i) => i.id === id);
     if (!item) return fallback;
     return `${item.value} ${item.unit}`.trim();
   };
+
+  // Section 1
+  const s1 = d?.section1_iranMacro;
+  const usdFree = s1?.usdFree || getV('usd-free-market', '۹۴,۵۰۰ تومان');
+  const usdYesterday = s1?.usdYesterday || '۹۴,۱۰۰ تومان';
+  const usdChangePct = s1?.usdChangePct || '+۰.۴۲٪';
+  const usdt = s1?.usdt || getV('usdt-toman-rate', '۹۴,۸۰۰ تومان');
+  const usdtYesterday = s1?.usdtYesterday || '۹۴,۲۰۰ تومان';
+  const usdtChangePct = s1?.usdtChangePct || '+۰.۶۳٪';
+  const gold18k = s1?.gold18k || getV('gold-18k-gram', '۸,۴۵۰,۰۰۰ تومان');
+  const gold18kYesterday = s1?.gold18kYesterday || '۸,۳۸۰,۰۰۰ تومان';
+  const gold18kChangePct = s1?.gold18kChangePct || '+۰.۸۳٪';
+  const sekeEmami = s1?.sekeEmami || getV('gold-coin-emami', '۹۵,۲۰۰,۰۰۰ تومان');
+  const sekeYesterday = s1?.sekeYesterday || '۹۴,۳۰۰,۰۰۰ تومان';
+  const sekeChangePct = s1?.sekeChangePct || '+۰.۹۵٪';
+  const coinBubble = s1?.coinBubble || getV('gold-coin-bubble', '۲۱.۵٪');
+  const econNews = s1?.econNews || 'ثبات در سامانه توافقی ارز و تداوم حراج شمش طلا در مرکز مبادله ایران';
+
+  // Section 2
+  const s2 = d?.section2_globalMarkets;
+  const goldOunce = s2?.goldOunce || getV('gold-ounce-price', '۲,۹۲۵ دلار');
+  const ounceYesterday = s2?.ounceYesterday || '۲,۹۱۰ دلار';
+  const ounceChangePct = s2?.ounceChangePct || '+۰.۵۱٪';
+  const dxy = s2?.dxy || getV('global-dxy-index', '۱۰۴.۲');
+  const dxyChangePct = s2?.dxyChangePct || '-۰.۱۵٪';
+  const brentOil = s2?.brentOil || getV('global-brent-oil', '۷۶.۴ دلار');
+  const brentChangePct = s2?.brentChangePct || '+۰.۳۵٪';
+  const vix = s2?.vix || getV('global-vix-index', '۱۴.۲ واحد');
+  const vixChangePct = s2?.vixChangePct || '-۲.۱٪';
+  const globalFearGreed = s2?.globalFearGreed || getV('global-market-sentiment', '۶۲ (طمع ملایم)');
+  const globalNews = s2?.globalNews || 'انتظار بازارها برای تثبیت نرخ بهره فدرال رزرو و افزایش ذخایر طلای بانک‌های مرکزی';
+
+  // Section 3
+  const s3 = d?.section3_crypto;
+  const btcPrice = s3?.btcPrice || getV('btc-price', '۹۶,۴۰۰ دلار');
+  const btcYesterday = s3?.btcYesterday || '۹۷,۲۰۰ دلار';
+  const btcChangePct = s3?.btcChangePct || '-۰.۸۲٪';
+  const ethPrice = s3?.ethPrice || getV('crypto-eth-price', '۲,۷۴۰ دلار');
+  const ethChangePct = s3?.ethChangePct || '-۱.۱۰٪';
+  const btcDominance = s3?.btcDominance || getV('btc-dominance', '۵۸.۴٪');
+  const marketCap = s3?.marketCap || getV('crypto-total-marketcap', '۳.۲۵ تریلیون دلار');
+  const etfFlow = s3?.etfFlow || 'خروج نقدینگی';
+  const etfFlowAmount = s3?.etfFlowAmount || getV('btc-etf-netflow', '-۳۵.۰ میلیون دلار');
+  const fundingRate = s3?.fundingRate || getV('crypto-funding-rate', '+۰.۰۰۸٪');
+  const openInterest = s3?.openInterest || getV('crypto-open-interest', '۳۸.۵ میلیارد دلار');
+  const cryptoFearGreed = s3?.cryptoFearGreed || getV('crypto-fear-greed', '۵۲ (خنثی)');
+  const cryptoNews = s3?.cryptoNews || 'نوسان بیت‌کوین در کانال ۹۶ هزار دلار با ثبت خروج مقطعی از ETFهای اسپات';
+
+  // Section 4
+  const s4 = d?.section4_bourse;
+  const tseIndex = s4?.tseIndex || getV('tse-overall-index', '۲,۸۴۵,۲۰۰ واحد');
+  const tseYesterday = s4?.tseYesterday || '۲,۸۰۴,۵۰۰ واحد';
+  const tseIndexChangePct = s4?.tseIndexChangePct || getV('tse-index-change', '+۱.۴۵٪');
+  const tseEqualWeight = s4?.tseEqualWeight || getV('tse-equal-weight-index', '۸۴۲,۱۰۰ واحد');
+  const tseEqualWeightChangePct = s4?.tseEqualWeightChangePct || '+۱.۲۲٪';
+  const retailVolume = s4?.retailVolume || getV('tse-retail-volume', '۹,۴۵۰ میلیارد تومان');
+  const realMoneyFlow = s4?.realMoneyFlow || getV('tse-real-money-flow', '+۱,۴۲۰ میلیارد تومان');
+  const positiveSymbols = s4?.positiveSymbolsCount || '۵۴۲ نماد';
+  const negativeSymbols = s4?.negativeSymbolsCount || '۲۳۸ نماد';
+  const buyQueueCount = s4?.buyQueueCount || '۱۶۴ نماد';
+  const buyQueueValue = s4?.buyQueueValue || '۱,۸۵۰ میلیارد تومان';
+  const sellQueueCount = s4?.sellQueueCount || '۳۲ نماد';
+  const sellQueueValue = s4?.sellQueueValue || '۲۱۰ میلیارد تومان';
+  const marketNews = s4?.marketNews || 'تداوم تقاضای قوی در گروه‌های دلاری و فلزات اساسی همراه با برتری قدرت خریداران';
+
+  // Section 5 (Afran)
+  const s5 = d?.section5_afranFund;
+  const afranPrice = s5?.closingPrice || getV('fund-afran-price', '۲,۲۱۰ ریال');
+  const afranNav = s5?.navPerUnit || '۲,۲۱۰ ریال';
+  const afranNavDiff = s5?.navDiffPct || '۰.۰٪';
+  const afranVol = s5?.volumeUnits || '۱,۲۵۰,۰۰۰,۰۰۰ واحد';
+  const afranVal = s5?.valueBillionToman || getV('fund-afran-volume', '۲۷۶ میلیارد تومان');
+  const afranFlow = s5?.moneyFlow || '+۶۵ میلیارد تومان';
+  const afranBuyCapita = s5?.perCapitaBuy || '۷۲ میلیون تومان';
+  const afranSellCapita = s5?.perCapitaSell || '۳۸ میلیون تومان';
+  const afranPower = s5?.buyerPower || '۱.۸۹';
+  const afranAum = s5?.aum || getV('fund-afran-aum', '۲۴,۵۰۰ میلیارد تومان');
+
+  // Section 6 (Ayar)
+  const s6 = d?.section6_ayarFund;
+  const ayarPrice = s6?.closingPrice || getV('fund-ayar-price', '۱۸,۴۵۰ تومان');
+  const ayarNav = s6?.navPerUnit || '۱۸,۳۶۰ تومان';
+  const ayarNavDiff = s6?.navDiffPct || '+۰.۴۹٪';
+  const ayarVol = s6?.volumeUnits || '۴۸,۵۰۰,۰۰۰ واحد';
+  const ayarVal = s6?.valueBillionToman || getV('fund-ayar-volume', '۸۹۵ میلیارد تومان');
+  const ayarFlow = s6?.moneyFlow || '+۱۴۵ میلیارد تومان';
+  const ayarBuyCapita = s6?.perCapitaBuy || '۶۴ میلیون تومان';
+  const ayarSellCapita = s6?.perCapitaSell || '۴۱ میلیون تومان';
+  const ayarPower = s6?.buyerPower || '۱.۵۶';
+  const ayarAum = s6?.aum || getV('fund-ayar-aum', '۱۸,۲۰۰ میلیارد تومان');
+
+  // Section 7 (Khebargan)
+  const s7 = d?.section7_khebarganFund;
+  const khebPrice = s7?.closingPrice || getV('fund-khebargan-price', '۳۴,۲۰۰ ریال');
+  const khebYesterday = s7?.yesterdayPrice || '۳۳,۴۰۰ ریال';
+  const khebChange = s7?.changePct || '+۲.۴۰٪';
+  const khebNav = s7?.navPerUnit || '۳۴,۵۰۰ ریال';
+  const khebNavDiff = s7?.navDiffPct || '-۰.۸۷٪ (تخفیف به NAV)';
+  const khebVol = s7?.volumeUnits || '۲۸,۰۰۰,۰۰۰ واحد';
+  const khebVal = s7?.valueBillionToman || '۹۵.۷ میلیارد تومان';
+  const khebFlow = s7?.moneyFlow || '+۲۸ میلیارد تومان';
+  const khebBuyCapita = s7?.perCapitaBuy || '۵۲ میلیون تومان';
+  const khebSellCapita = s7?.perCapitaSell || '۳۱ میلیون تومان';
+  const khebPower = s7?.buyerPower || '۱.۶۸';
+
+  // Section 8 (Tavan)
+  const s8 = d?.section8_tavanFund;
+  const tavanPrice = s8?.closingPrice || getV('fund-tavan-price', '۲۴,۸۰۰ ریال');
+  const tavanNav = s8?.navPerUnit || '۲۴,۹۵۰ ریال';
+  const tavanNavDiff = s8?.navDiffPct || '-۰.۶۰٪';
+  const tavanVol = s8?.volumeUnits || '۹۲,۰۰۰,۰۰۰ واحد';
+  const tavanVal = s8?.valueBillionToman || '۲۲۸ میلیارد تومان';
+  const tavanFlow = s8?.moneyFlow || '+۵۸ میلیارد تومان';
+  const tavanBuyCapita = s8?.perCapitaBuy || '۵۸ میلیون تومان';
+  const tavanSellCapita = s8?.perCapitaSell || '۳۴ میلیون تومان';
+  const tavanPower = s8?.buyerPower || '۱.۷۱';
+
+  // Section 9 (Other Gold Funds)
+  const s9 = d?.section9_otherGoldFunds;
+  const goldAyar = s9?.ayar || '۱۸,۴۵۰ تومان (+۰.۴۹٪ حباب)';
+  const goldKahroba = s9?.kahroba || '۱۹,۲۰۰ تومان (+۰.۴۰٪ حباب)';
+  const goldZar = s9?.zar || '۲۲,۱۵۰ تومان (+۰.۵۵٪ حباب)';
+  const goldGohar = s9?.gohar || '۱۵,۴۰۰ تومان (+۰.۳۵٪ حباب)';
+  const goldNafis = s9?.nafis || '۱۲,۸۰۰ تومان (+۰.۴۲٪ حباب)';
+  const goldMesghal = s9?.mesghal || '۱۴,۹۰۰ تومان (+۰.۵۰٪ حباب)';
+
+  // Section 10 (Leveraged Funds)
+  const s10 = d?.section10_leveragedFunds;
+  const levAhrom = s10?.ahrom || '۲۳,۵۰۰ ریال (+۲.۸٪)';
+  const levTavan = s10?.tavan || '۲۴,۸۰۰ ریال (+۳.۱٪)';
+  const levMoj = s10?.moj || '۱۸,۲۰۰ ریال (+۲.۴٪)';
+  const levShetab = s10?.shetab || '۲۱,۴۰۰ ریال (+۲.۷٪)';
+  const levBidar = s10?.bidar || '۱۹,۸۰۰ ریال (+۲.۹٪)';
+  const levJahesh = s10?.jahesh || '۲۶,۲۰۰ ریال (+۳.۰٪)';
+  const levDoX = s10?.doX || '۱۶,۵۰۰ ریال (+۲.۵٪)';
+
+  // Section 11 (Silver Funds)
+  const s11 = d?.section11_silverFunds;
+  const silSilver = s11?.silver || '۱۱,۲۵۰ تومان (+۱.۲٪)';
+  const silNoghrein = s11?.noghrein || '۱۰,۸۰۰ تومان (+۰.۹٪)';
+  const silNoghrabi = s11?.noghrabi || '۱۲,۱۰۰ تومان (+۱.۱٪)';
+
+  // Section 12 (Risks & News)
+  const s12 = d?.section12_systematicRisks;
+  const riskPolitical = s12?.riskPolitical || getV('risk-political', 'سطح متوسط و تحت رصد');
+  const riskMilitary = s12?.riskMilitary || getV('risk-military', 'آرامش نسبی بدون تنش جدید');
+  const riskEconomic = s12?.riskEconomic || getV('risk-economic', 'کنترل شکاف ارز آزاد و نیما');
+  const riskGlobal = s12?.riskGlobal || getV('risk-global', 'تثبیت شاخص‌های نرخ بهره');
+  const riskCrypto = s12?.riskCrypto || getV('risk-crypto', 'فشار مقطعی عرضه در آلتکوین‌ها');
+  const cbiDecisions = s12?.cbiDecisions || 'نرخ سود بین‌بانکی ۲۳.۸۵٪ و ادامه حراج مرکز مبادله';
+  const seoDecisions = s12?.seoDecisions || 'تداوم نظارت بر بازارگردانی و دامنه نوسان استاندارد';
+  const domesticNews = s12?.domesticNews || 'عرضه ارز در بازار توافقی و گزارش‌های ماهانه شرکت‌های صادرات‌محور';
+  const intlNews = s12?.internationalNews || 'گزارش‌های اشتغال آمریکا و تصمیمات فدرال رزرو';
+
+  // Section 13 (Liquidity Flows)
+  const s13 = d?.section13_liquidityFlow;
+  const flowBourse = s13?.flowBourse || realMoneyFlow;
+  const flowGold = s13?.flowGoldFunds || '+۱۴۵ میلیارد تومان';
+  const flowFixed = s13?.flowFixedIncome || '+۴۸۰ میلیارد تومان (خروج به سمت سهام)';
+  const flowEquity = s13?.flowEquityFunds || '+۳۲۰ میلیارد تومان';
+  const flowLev = s13?.flowLeveragedFunds || '+۱۸۵ میلیارد تومان';
+  const flowCrypto = s13?.flowCrypto || etfFlowAmount;
 
   return `══════════════════════════════════════════════════════════════
 S1 VERSION 1.3
@@ -300,243 +468,246 @@ DAILY INPUT
 ۱) اقتصاد کلان ایران
 ==============================================================
 
-□ دلار آزاد: ${getV('usd-free-market', '۹۴,۵۰۰ تومان')}
-□ دلار دیروز: ۹۴,۱۰۰ تومان
-□ درصد تغییر: +۰.۴۲٪
+□ دلار آزاد: ${usdFree}
+□ دلار دیروز: ${usdYesterday}
+□ درصد تغییر: ${usdChangePct}
 
-□ تتر: ${getV('usdt-toman-rate', '۹۴,۸۰۰ تومان')}
-□ تتر دیروز: ۹۴,۲۰۰ تومان
-□ درصد تغییر: +۰.۶۳٪
+□ تتر: ${usdt}
+□ تتر دیروز: ${usdtYesterday}
+□ درصد تغییر: ${usdtChangePct}
 
-□ طلای ۱۸ عیار: ${getV('gold-18k-gram', '۸,۴۵۰,۰۰۰ تومان')}
-□ طلای دیروز: ۸,۳۸۰,۰۰۰ تومان
-□ درصد تغییر: +۰.۸۳٪
+□ طلای ۱۸ عیار: ${gold18k}
+□ طلای دیروز: ${gold18kYesterday}
+□ درصد تغییر: ${gold18kChangePct}
 
-□ سکه امامی: ${getV('gold-coin-emami', '۹۵,۲۰۰,۰۰۰ تومان')}
-□ سکه دیروز: ۹۴,۳۰۰,۰۰۰ تومان
-□ درصد تغییر: +۰.۹۵٪
+□ سکه امامی: ${sekeEmami}
+□ سکه دیروز: ${sekeYesterday}
+□ درصد تغییر: ${sekeChangePct}
 
-□ حباب سکه: ${getV('gold-coin-bubble', '۲۱.۵٪')}
+□ حباب سکه: ${coinBubble}
 
-□ مهمترین اخبار اقتصادی امروز:
-ثبات در سامانه توافقی ارز و تداوم حراج شمش طلا در مرکز مبادله ایران
+□ مهم‌ترین اخبار اقتصادی امروز:
+${econNews}
 
 ==============================================================
 ۲) بازارهای جهانی
 ==============================================================
 
-□ اونس جهانی طلا: ${getV('gold-ounce-price', '۲,۹۲۵ دلار')}
-□ اونس دیروز: ۲,۹۱۰ دلار
-□ درصد تغییر: +۰.۵۱٪
+□ اونس جهانی طلا: ${goldOunce}
+□ اونس دیروز: ${ounceYesterday}
+□ درصد تغییر: ${ounceChangePct}
 
-□ شاخص دلار (DXY): ${getV('global-dxy-index', '۱۰۴.۲')}
-□ درصد تغییر: -۰.۱۵٪
+□ شاخص دلار (DXY): ${dxy}
+□ درصد تغییر: ${dxyChangePct}
 
-□ نفت برنت: ${getV('global-brent-oil', '۷۶.۴ دلار')}
-□ درصد تغییر: +۰.۳۵٪
+□ نفت برنت: ${brentOil}
+□ درصد تغییر: ${brentChangePct}
 
-□ شاخص VIX: ${getV('global-vix-index', '۱۴.۲ واحد')}
-□ درصد تغییر: -۲.۱٪
+□ شاخص VIX: ${vix}
+□ درصد تغییر: ${vixChangePct}
 
-□ Fear & Greed جهانی: ${getV('global-market-sentiment', '۶۲ (طمع ملایم)')}
+□ Fear & Greed جهانی: ${globalFearGreed}
 
-□ مهمترین اخبار اقتصاد جهان:
-انتظار بازارها برای تثبیت نرخ بهره فدرال رزرو و افزایش ذخایر طلای بانک‌های مرکزی
+□ مهم‌ترین اخبار اقتصاد جهان:
+${globalNews}
 
 ==============================================================
-۳) بیتکوین و بازار کریپتو
+۳) بیت‌کوین و بازار کریپتو
 ==============================================================
 
-□ قیمت بیتکوین: ${getV('btc-price', '۹۶,۴۰۰ دلار')}
-□ قیمت دیروز: ۹۷,۲۰۰ دلار
-□ درصد تغییر: -۰.۸۲٪
+□ قیمت بیت‌کوین: ${btcPrice}
+□ قیمت دیروز: ${btcYesterday}
+□ درصد تغییر: ${btcChangePct}
 
-□ قیمت اتریوم: ${getV('crypto-eth-price', '۲,۷۴۰ دلار')}
-□ درصد تغییر: -۱.۱۰٪
+□ قیمت اتریوم: ${ethPrice}
+□ درصد تغییر: ${ethChangePct}
 
-□ Bitcoin Dominance: ${getV('btc-dominance', '۵۸.۴٪')}
+□ Bitcoin Dominance: ${btcDominance}
 
-□ Market Cap: ${getV('crypto-total-marketcap', '۳.۲۵ تریلیون دلار')}
+□ Market Cap: ${marketCap}
 
-□ ETF Flow:
-□ مقدار: ${getV('btc-etf-netflow', '-۳۵.۰ میلیون دلار')}
+□ ETF Flow: ${etfFlow}
+□ مقدار: ${etfFlowAmount}
 
-□ Funding Rate: ${getV('crypto-funding-rate', '+۰.۰۰۸٪')}
+□ Funding Rate: ${fundingRate}
 
-□ Open Interest: ${getV('crypto-open-interest', '۳۸.۵ میلیارد دلار')}
+□ Open Interest: ${openInterest}
 
-□ Fear & Greed Crypto: ${getV('crypto-fear-greed', '۵۲ (خنثی)')}
+□ Fear & Greed Crypto: ${cryptoFearGreed}
 
-□ مهمترین اخبار کریپتو:
-نوسان بیت‌کوین در کانال ۹۶ هزار دلار با ثبت خروج مقطعی از ETFهای اسپات
+□ مهم‌ترین اخبار کریپتو:
+${cryptoNews}
 
 ==============================================================
 ۴) بورس ایران
 ==============================================================
 
-□ شاخص کل: ${getV('tse-overall-index', '۲,۸۴۵,۲۰۰ واحد')}
-□ شاخص دیروز: ۲,۸۰۴,۵۰۰ واحد
-□ درصد تغییر: ${getV('tse-index-change', '+۱.۴۵٪')}
+□ شاخص کل: ${tseIndex}
+□ شاخص دیروز: ${tseYesterday}
+□ درصد تغییر: ${tseIndexChangePct}
 
-□ شاخص هموزن: ${getV('tse-equal-weight-index', '۸۴۲,۱۰۰ واحد')}
-□ درصد تغییر: +۱.۲۲٪
+□ شاخص هم‌وزن: ${tseEqualWeight}
+□ درصد تغییر: ${tseEqualWeightChangePct}
 
-□ ارزش معاملات خرد: ${getV('tse-retail-volume', '۹,۴۵۰ میلیارد تومان')}
+□ ارزش معاملات خرد: ${retailVolume}
 
-□ ورود / خروج پول حقیقی: ${getV('tse-real-money-flow', '+۱,۴۲۰ میلیارد تومان')}
+□ ورود / خروج پول حقیقی: ${realMoneyFlow}
 
-□ تعداد نماد مثبت: ۵۴۲ نماد
-□ تعداد نماد منفی: ۲۳۸ نماد
+□ تعداد نماد مثبت: ${positiveSymbols}
+□ تعداد نماد منفی: ${negativeSymbols}
 
-□ تعداد صف خرید: ۱۶۴ نماد
-□ ارزش صف خرید: ۱,۸۵۰ میلیارد تومان
+□ تعداد صف خرید: ${buyQueueCount}
+□ ارزش صف خرید: ${buyQueueValue}
 
-□ تعداد صف فروش: ۳۲ نماد
-□ ارزش صف فروش: ۲۱۰ میلیارد تومان
+□ تعداد صف فروش: ${sellQueueCount}
+□ ارزش صف فروش: ${sellQueueValue}
 
-□ مهمترین خبر بازار:
-تداوم تقاضای قوی در گروه‌های دلاری و فلزات اساسی همراه با برتری قدرت خریداران
+□ مهم‌ترین خبر بازار:
+${marketNews}
 
 ==============================================================
 ۵) صندوق درآمد ثابت افران
 ==============================================================
 
-□ قیمت پایانی: ${getV('fund-afran-price', '۲,۲۱۰ ریال')}
-□ NAV ابطال: ۲,۲۱۰ ریال
-□ اختلاف قیمت با NAV: ۰.۰٪
+□ قیمت پایانی: ${afranPrice}
+□ NAV ابطال: ${afranNav}
+□ اختلاف قیمت با NAV: ${afranNavDiff}
 
-□ حجم معاملات: ۱,۲۵۰,۰۰۰,۰۰۰ واحد
-□ ارزش معاملات: ${getV('fund-afran-volume', '۲۷۶ میلیارد تومان')}
+□ حجم معاملات: ${afranVol}
+□ ارزش معاملات: ${afranVal}
 
-□ ورود / خروج پول: +۶۵ میلیارد تومان
+□ ورود / خروج پول: ${afranFlow}
 
-□ سرانه خرید: ۷۲ میلیون تومان
-□ سرانه فروش: ۳۸ میلیون تومان
-□ قدرت خریدار: ۱.۸۹
+□ سرانه خرید: ${afranBuyCapita}
+□ سرانه فروش: ${afranSellCapita}
+□ قدرت خریدار: ${afranPower}
 
-□ AUM: ${getV('fund-afran-aum', '۲۴,۵۰۰ میلیارد تومان')}
+□ AUM: ${afranAum}
 
 ==============================================================
 ۶) صندوق طلای عیار
 ==============================================================
 
-□ قیمت پایانی: ${getV('fund-ayar-price', '۱۸,۴۵۰ تومان')}
-□ NAV ابطال: ۱۸,۳۶۰ تومان
-□ اختلاف قیمت با NAV: +۰.۴۹٪
+□ قیمت پایانی: ${ayarPrice}
+□ NAV ابطال: ${ayarNav}
+□ اختلاف قیمت با NAV: ${ayarNavDiff}
 
-□ حجم معاملات: ۴۸,۵۰۰,۰۰۰ واحد
-□ ارزش معاملات: ${getV('fund-ayar-volume', '۸۹۵ میلیارد تومان')}
+□ حجم معاملات: ${ayarVol}
+□ ارزش معاملات: ${ayarVal}
 
-□ ورود / خروج پول: +۱۴۵ میلیارد تومان
-□ سرانه خرید: ۶۴ میلیون تومان
-□ سرانه فروش: ۴۱ میلیون تومان
-□ قدرت خریدار: ۱.۵۶
+□ ورود / خروج پول: ${ayarFlow}
 
-□ AUM: ${getV('fund-ayar-aum', '۱۸,۲۰۰ میلیارد تومان')}
+□ سرانه خرید: ${ayarBuyCapita}
+□ سرانه فروش: ${ayarSellCapita}
+□ قدرت خریدار: ${ayarPower}
+
+□ AUM: ${ayarAum}
 
 ==============================================================
 ۷) صندوق سهامی خبرگان
 ==============================================================
 
-□ قیمت پایانی: ${getV('fund-khebargan-price', '۳۴,۲۰۰ ریال')}
-□ قیمت روز قبل: ۳۳,۴۰۰ ریال
-□ درصد تغییر: +۲.۴۰٪
+□ قیمت پایانی: ${khebPrice}
+□ قیمت روز قبل: ${khebYesterday}
+□ درصد تغییر: ${khebChange}
 
-□ NAV ابطال: ۳۴,۵۰۰ ریال
-□ اختلاف قیمت با NAV: -۰.۸۷٪ (تخفیف به NAV)
+□ NAV ابطال: ${khebNav}
+□ اختلاف قیمت با NAV: ${khebNavDiff}
 
-□ حجم معاملات: ۲۸,۰۰۰,۰۰۰ واحد
-□ ارزش معاملات: ۹۵.۷ میلیارد تومان
+□ حجم معاملات: ${khebVol}
+□ ارزش معاملات: ${khebVal}
 
-□ ورود / خروج پول: +۲۸ میلیارد تومان
-□ سرانه خرید: ۵۲ میلیون تومان
-□ سرانه فروش: ۳۱ میلیون تومان
-□ قدرت خریدار: ۱.۶۸
+□ ورود / خروج پول: ${khebFlow}
+
+□ سرانه خرید: ${khebBuyCapita}
+□ سرانه فروش: ${khebSellCapita}
+□ قدرت خریدار: ${khebPower}
 
 ==============================================================
 ۸) صندوق اهرمی توان
 ==============================================================
 
-□ قیمت پایانی: ${getV('fund-tavan-price', '۲۴,۸۰۰ ریال')}
-□ NAV ابطال: ۲۴,۹۵۰ ریال
-□ اختلاف قیمت با NAV: -۰.۶۰٪
+□ قیمت پایانی: ${tavanPrice}
+□ NAV ابطال: ${tavanNav}
+□ اختلاف قیمت با NAV: ${tavanNavDiff}
 
-□ حجم معاملات: ۹۲,۰۰۰,۰۰۰ واحد
-□ ارزش معاملات: ۲۲۸ میلیارد تومان
+□ حجم معاملات: ${tavanVol}
+□ ارزش معاملات: ${tavanVal}
 
-□ ورود / خروج پول: +۵۸ میلیارد تومان
-□ سرانه خرید: ۵۸ میلیون تومان
-□ سرانه فروش: ۳۴ میلیون تومان
-□ قدرت خریدار: ۱.۷۱
+□ ورود / خروج پول: ${tavanFlow}
 
-==============================================================
-۹) سایر صندوقهای طلا
-==============================================================
-
-□ عیار: ۱۸,۴۵۰ تومان (+۰.۴۹٪ حباب)
-□ کهربا: ۱۹,۲۰۰ تومان (+۰.۴۰٪ حباب)
-□ زر: ۲۲,۱۵۰ تومان (+۰.۵۵٪ حباب)
-□ گوهر: ۱۵,۴۰۰ تومان (+۰.۳۵٪ حباب)
-□ نفیس: ۱۲,۸۰۰ تومان (+۰.۴۲٪ حباب)
-□ مثقال: ۱۴,۹۰۰ تومان (+۰.۵۰٪ حباب)
+□ سرانه خرید: ${tavanBuyCapita}
+□ سرانه فروش: ${tavanSellCapita}
+□ قدرت خریدار: ${tavanPower}
 
 ==============================================================
-۱۰) صندوقهای اهرمی
+۹) سایر صندوق‌های طلا
 ==============================================================
 
-□ اهرم: ۲۳,۵۰۰ ریال (+۲.۸٪)
-□ توان: ۲۴,۸۰۰ ریال (+۳.۱٪)
-□ موج: ۱۸,۲۰۰ ریال (+۲.۴٪)
-□ شتاب: ۲۱,۴۰۰ ریال (+۲.۷٪)
-□ بیدار: ۱۹,۸۰۰ ریال (+۲.۹٪)
-□ جهش: ۲۶,۲۰۰ ریال (+۳.۰٪)
-□ دوایکس: ۱۶,۵۰۰ ریال (+۲.۵٪)
+□ عیار: ${goldAyar}
+□ کهربا: ${goldKahroba}
+□ زر: ${goldZar}
+□ گوهر: ${goldGohar}
+□ نفیس: ${goldNafis}
+□ مثقال: ${goldMesghal}
 
 ==============================================================
-۱۱) صندوقهای نقره
+۱۰) صندوق‌های اهرمی
 ==============================================================
 
-□ سیلور: ۱۱,۲۵۰ تومان (+۱.۲٪)
-□ نقرین: ۱۰,۸۰۰ تومان (+۰.۹٪)
-□ نقرابی: ۱۲,۱۰۰ تومان (+۱.۱٪)
+□ اهرم: ${levAhrom}
+□ توان: ${levTavan}
+□ موج: ${levMoj}
+□ شتاب: ${levShetab}
+□ بیدار: ${levBidar}
+□ جهش: ${levJahesh}
+□ دوایکس: ${levDoX}
 
 ==============================================================
-۱۲) اخبار و ریسکهای سیستماتیک
+۱۱) صندوق‌های نقره
 ==============================================================
 
-□ ریسک سیاسی: ${getV('risk-political', 'سطح متوسط و تحت رصد')}
+□ سیلور: ${silSilver}
+□ نقرین: ${silNoghrein}
+□ نقرابی: ${silNoghrabi}
 
-□ ریسک نظامی: ${getV('risk-military', 'آرامش نسبی بدون تنش جدید')}
+==============================================================
+۱۲) اخبار و ریسک‌های سیستماتیک
+==============================================================
 
-□ ریسک اقتصادی: ${getV('risk-economic', 'کنترل شکاف ارز آزاد و نیما')}
+□ ریسک سیاسی: ${riskPolitical}
 
-□ ریسک بازار جهانی: ${getV('risk-global', 'تثبیت شاخص‌های نرخ بهره')}
+□ ریسک نظامی: ${riskMilitary}
 
-□ ریسک بازار کریپتو: ${getV('risk-crypto', 'فشار مقطعی عرضه در آلتکوین‌ها')}
+□ ریسک اقتصادی: ${riskEconomic}
 
-□ تصمیمات بانک مرکزی: نرخ سود بین‌بانکی ۲۳.۸۵٪ و ادامه حراج مرکز مبادله
+□ ریسک بازار جهانی: ${riskGlobal}
 
-□ تصمیمات سازمان بورس: تداوم نظارت بر بازارگردانی و دامنه نوسان استاندارد
+□ ریسک بازار کریپتو: ${riskCrypto}
 
-□ مهمترین اخبار داخلی: عرضه ارز در بازار توافقی و گزارش‌های ماهانه شرکت‌های صادرات‌محور
+□ تصمیمات بانک مرکزی: ${cbiDecisions}
 
-□ مهمترین اخبار بینالمللی: گزارش‌های اشتغال آمریکا و تصمیمات فدرال رزرو
+□ تصمیمات سازمان بورس: ${seoDecisions}
+
+□ مهم‌ترین اخبار داخلی: ${domesticNews}
+
+□ مهم‌ترین اخبار بین‌المللی: ${intlNews}
 
 ==============================================================
 ۱۳) وضعیت جریان نقدینگی
 ==============================================================
 
-□ ورود / خروج پول به بورس: ${getV('tse-real-money-flow', '+۱,۴۲۰ میلیارد تومان')}
+□ ورود / خروج پول به بورس: ${flowBourse}
 
-□ ورود / خروج پول به صندوقهای طلا: +۱۴۵ میلیارد تومان
+□ ورود / خروج پول به صندوق‌های طلا: ${flowGold}
 
-□ ورود / خروج پول به صندوقهای درآمد ثابت: +۴۸۰ میلیارد تومان (خروج به سمت سهام)
+□ ورود / خروج پول به صندوق‌های درآمد ثابت: ${flowFixed}
 
-□ ورود / خروج پول به صندوقهای سهامی: +۳۲۰ میلیارد تومان
+□ ورود / خروج پول به صندوق‌های سهامی: ${flowEquity}
 
-□ ورود / خروج پول به صندوقهای اهرمی: +۱۸۵ میلیارد تومان
+□ ورود / خروج پول به صندوق‌های اهرمی: ${flowLev}
 
-□ ورود / خروج پول به بازار کریپتو: ${getV('btc-etf-netflow', '-۳۵.۰ میلیون دلار')}
+□ ورود / خروج پول به بازار کریپتو: ${flowCrypto}
 
 ══════════════════════════════════════════════════════════════
 پایان DAILY INPUT
