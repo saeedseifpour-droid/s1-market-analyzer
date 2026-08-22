@@ -48,6 +48,12 @@ import { DailyReportModal } from './components/DailyReportModal';
 import { MarketDetailsModal } from './components/MarketDetailsModal';
 import { ValidationCoreModal } from './components/ValidationCoreModal';
 import { getDefault13SectionsData, runS1ValidationCore } from './utils/s1ValidationCore';
+import {
+  getLiveJalaliDateString,
+  getLiveJalaliVerboseDate,
+  getTehranTimeString,
+  getLiveDateTimeString,
+} from './utils/dateHelper';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -85,7 +91,7 @@ export default function App() {
   // Rebalance 1 Billion Toman Portfolio to S1 Target Weights
   const handleRebalancePortfolioToS1 = () => {
     const totalVal = portfolioSummary.currentValueToman;
-    const dateStr = '1403/08/15 ' + new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = `${getLiveJalaliDateString(0, true)} ${getTehranTimeString(true)}`;
 
     // Target allocations based on S1 signal
     const updatedAssets = portfolioAssets.map((asset) => {
@@ -109,13 +115,13 @@ export default function App() {
     // Update Summary
     setPortfolioSummary((prev) => ({
       ...prev,
-      lastRebalanceDateJalali: '۱۵ آبان ۱۴۰۳ - بازتوازن هوشمند',
+      lastRebalanceDateJalali: `${getLiveJalaliVerboseDate(0)} - بازتوازن هوشمند S1`,
     }));
 
     // Add rebalance trade record
     const rebalanceTrade: PortfolioTradeItem = {
       id: `trade-${Date.now()}`,
-      dateJalali: '۱۵ آبان ۱۴۰۳',
+      dateJalali: getLiveJalaliVerboseDate(0),
       assetName: 'بازتوازن جامع سبد S1',
       assetTicker: 'REBALANCE-ALL',
       type: 'rebalance',
@@ -208,7 +214,7 @@ export default function App() {
       overallScore: compositeScore,
       actionTitle: action,
       summaryText: summary,
-      lastUpdatedJalali: '1403/08/15 ' + new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      lastUpdatedJalali: `${getLiveJalaliDateString(0, true)} ${getTehranTimeString(true)}:00`,
     };
 
     setSignal(updatedSignal);

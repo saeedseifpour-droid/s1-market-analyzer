@@ -1261,7 +1261,7 @@ export const initialPortfolioSummary: PortfolioSummary = {
   sharpeRatio: 2.45,
   cashBalanceToman: 50_000_000, // 50M Toman
   investedValueToman: 1_098_650_000,
-  lastRebalanceDateJalali: '1403/08/15',
+  lastRebalanceDateJalali: getLiveJalaliDateString(0, true),
   activePositionsCount: 5,
 };
 
@@ -1364,17 +1364,17 @@ export const initialPortfolioAssets: PortfolioAssetItem[] = [
 ];
 
 export const initialPortfolioHistory: PortfolioHistoryPoint[] = [
-  { dateJalali: '1403/06/15', dateKey: 'Day 1', portfolioValue: 1_000_000_000, portfolioValueMillion: 1000.0, drawdownPct: 0.0, dailyReturnPct: 0.0, benchmarkValueMillion: 1000.0, notes: 'افتتاح پورتفوی با سرمایه پایه ۱ میلیارد تومان' },
-  { dateJalali: '1403/06/20', dateKey: 'Day 5', portfolioValue: 1_012_500_000, portfolioValueMillion: 1012.5, drawdownPct: 0.0, dailyReturnPct: 1.25, benchmarkValueMillion: 1004.0, notes: 'ورود پول به صندوق عیار' },
-  { dateJalali: '1403/06/25', dateKey: 'Day 10', portfolioValue: 1_028_000_000, portfolioValueMillion: 1028.0, drawdownPct: 0.0, dailyReturnPct: 1.53, benchmarkValueMillion: 1009.0 },
-  { dateJalali: '1403/07/01', dateKey: 'Day 15', portfolioValue: 1_019_400_000, portfolioValueMillion: 1019.4, drawdownPct: -0.84, dailyReturnPct: -0.84, benchmarkValueMillion: 1002.0, notes: 'اصلاح موقت بورس' },
-  { dateJalali: '1403/07/05', dateKey: 'Day 20', portfolioValue: 1_011_000_000, portfolioValueMillion: 1011.0, drawdownPct: -1.65, dailyReturnPct: -0.82, benchmarkValueMillion: 994.0 },
-  { dateJalali: '1403/07/10', dateKey: 'Day 25', portfolioValue: 1_042_300_000, portfolioValueMillion: 1042.3, drawdownPct: 0.0, dailyReturnPct: 3.1, benchmarkValueMillion: 1015.0, notes: 'رشد پرقدرت طلا و صندوق عیار' },
-  { dateJalali: '1403/07/15', dateKey: 'Day 30', portfolioValue: 1_065_800_000, portfolioValueMillion: 1065.8, drawdownPct: 0.0, dailyReturnPct: 2.25, benchmarkValueMillion: 1026.0 },
-  { dateJalali: '1403/07/20', dateKey: 'Day 35', portfolioValue: 1_053_200_000, portfolioValueMillion: 1053.2, drawdownPct: -1.18, dailyReturnPct: -1.18, benchmarkValueMillion: 1018.0 },
-  { dateJalali: '1403/07/25', dateKey: 'Day 40', portfolioValue: 1_078_900_000, portfolioValueMillion: 1078.9, drawdownPct: 0.0, dailyReturnPct: 2.44, benchmarkValueMillion: 1035.0, notes: 'سیگنال خرید پله‌ای S1' },
-  { dateJalali: '1403/07/28', dateKey: 'Day 43', portfolioValue: 1_092_400_000, portfolioValueMillion: 1092.4, drawdownPct: 0.0, dailyReturnPct: 1.25, benchmarkValueMillion: 1042.0 },
-  { dateJalali: getLiveJalaliDateString(-15, true), dateKey: 'Day 46', portfolioValue: 1_084_100_000, portfolioValueMillion: 1084.1, drawdownPct: -0.76, dailyReturnPct: -0.76, benchmarkValueMillion: 1038.0 },
+  { dateJalali: getLiveJalaliDateString(-60, true), dateKey: 'Day 1', portfolioValue: 1_000_000_000, portfolioValueMillion: 1000.0, drawdownPct: 0.0, dailyReturnPct: 0.0, benchmarkValueMillion: 1000.0, notes: 'افتتاح پورتفوی با سرمایه پایه ۱ میلیارد تومان' },
+  { dateJalali: getLiveJalaliDateString(-50, true), dateKey: 'Day 5', portfolioValue: 1_012_500_000, portfolioValueMillion: 1012.5, drawdownPct: 0.0, dailyReturnPct: 1.25, benchmarkValueMillion: 1004.0, notes: 'ورود پول به صندوق عیار' },
+  { dateJalali: getLiveJalaliDateString(-40, true), dateKey: 'Day 10', portfolioValue: 1_028_000_000, portfolioValueMillion: 1028.0, drawdownPct: 0.0, dailyReturnPct: 1.53, benchmarkValueMillion: 1009.0 },
+  { dateJalali: getLiveJalaliDateString(-35, true), dateKey: 'Day 15', portfolioValue: 1_019_400_000, portfolioValueMillion: 1019.4, drawdownPct: -0.84, dailyReturnPct: -0.84, benchmarkValueMillion: 1002.0, notes: 'اصلاح موقت بورس' },
+  { dateJalali: getLiveJalaliDateString(-30, true), dateKey: 'Day 20', portfolioValue: 1_011_000_000, portfolioValueMillion: 1011.0, drawdownPct: -1.65, dailyReturnPct: -0.82, benchmarkValueMillion: 994.0 },
+  { dateJalali: getLiveJalaliDateString(-25, true), dateKey: 'Day 25', portfolioValue: 1_042_300_000, portfolioValueMillion: 1042.3, drawdownPct: 0.0, dailyReturnPct: 3.1, benchmarkValueMillion: 1015.0, notes: 'رشد پرقدرت طلا و صندوق عیار' },
+  { dateJalali: getLiveJalaliDateString(-20, true), dateKey: 'Day 30', portfolioValue: 1_065_800_000, portfolioValueMillion: 1065.8, drawdownPct: 0.0, dailyReturnPct: 2.25, benchmarkValueMillion: 1026.0 },
+  { dateJalali: getLiveJalaliDateString(-18, true), dateKey: 'Day 35', portfolioValue: 1_053_200_000, portfolioValueMillion: 1053.2, drawdownPct: -1.18, dailyReturnPct: -1.18, benchmarkValueMillion: 1018.0 },
+  { dateJalali: getLiveJalaliDateString(-16, true), dateKey: 'Day 40', portfolioValue: 1_078_900_000, portfolioValueMillion: 1078.9, drawdownPct: 0.0, dailyReturnPct: 2.44, benchmarkValueMillion: 1035.0, notes: 'سیگنال خرید پله‌ای S1' },
+  { dateJalali: getLiveJalaliDateString(-14, true), dateKey: 'Day 43', portfolioValue: 1_092_400_000, portfolioValueMillion: 1092.4, drawdownPct: 0.0, dailyReturnPct: 1.25, benchmarkValueMillion: 1042.0 },
+  { dateJalali: getLiveJalaliDateString(-12, true), dateKey: 'Day 46', portfolioValue: 1_084_100_000, portfolioValueMillion: 1084.1, drawdownPct: -0.76, dailyReturnPct: -0.76, benchmarkValueMillion: 1038.0 },
   { dateJalali: getLiveJalaliDateString(-10, true), dateKey: 'Day 50', portfolioValue: 1_115_300_000, portfolioValueMillion: 1115.3, drawdownPct: 0.0, dailyReturnPct: 2.88, benchmarkValueMillion: 1058.0, notes: 'جهش صندوق‌های اهرمی' },
   { dateJalali: getLiveJalaliDateString(-7, true), dateKey: 'Day 53', portfolioValue: 1_128_600_000, portfolioValueMillion: 1128.6, drawdownPct: 0.0, dailyReturnPct: 1.19, benchmarkValueMillion: 1068.0 },
   { dateJalali: getLiveJalaliDateString(-5, true), dateKey: 'Day 55', portfolioValue: 1_121_000_000, portfolioValueMillion: 1121.0, drawdownPct: -0.67, dailyReturnPct: -0.67, benchmarkValueMillion: 1062.0 },
@@ -1585,7 +1585,7 @@ export const initialSystemicRisks: SystemicRiskItem[] = [
     keyTriggers: ['رخدادهای نظامی منطقه‌ای', 'بیانیه‌های نهادهای بین‌المللی', 'نوسان نرخ بیمه کشتیرانی خلیج فارس'],
     mitigationStrategy: 'تخصیص ۳۰ تا ۳۵ درصد از سبد دارایی به صندوق‌های طلا (عیار) و طلای فیزیکی جهت جذب تکانه‌های ناگهانی.',
     affectedAssets: 'طلای فیزیکی، صندوق عیار، دلار و تتر',
-    lastAssessedJalali: '1403/08/15',
+    lastAssessedJalali: getLiveJalaliDateString(0, true),
   },
   {
     id: 'risk-2',
@@ -1599,7 +1599,7 @@ export const initialSystemicRisks: SystemicRiskItem[] = [
     keyTriggers: ['حراج‌های هفتگی اوراق دولتی', 'سیاست کنترل ترازنامه بانک‌ها', 'نرخ سود سپرده‌های خاص'],
     mitigationStrategy: 'نگهداری ۳۰٪ از پورتفو در صندوق‌های نقدشونده درآمد ثابت (مانند افران) با بازدهی روزشمار بالای ۳۰٪ مؤثر.',
     affectedAssets: 'صندوق افران، سهام بانکی و ریالی',
-    lastAssessedJalali: '1403/08/15',
+    lastAssessedJalali: getLiveJalaliDateString(0, true),
   },
   {
     id: 'risk-3',
@@ -1613,7 +1613,7 @@ export const initialSystemicRisks: SystemicRiskItem[] = [
     keyTriggers: ['عرضه نفت و میعانات در بورس انرژی', 'تحولات بازار حواله دبی', 'مقررات بازگشت ارز صادراتی'],
     mitigationStrategy: 'تنوع‌بخشی بین دارایی‌های ریالی با سود تضمینی و دارایی‌های با بتا و ضریب همبستگی مثبت به ارز.',
     affectedAssets: 'سهام صادرات‌محور، صندوق توان، تتر',
-    lastAssessedJalali: '1403/08/15',
+    lastAssessedJalali: getLiveJalaliDateString(0, true),
   },
   {
     id: 'risk-4',

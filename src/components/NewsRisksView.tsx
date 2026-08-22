@@ -28,6 +28,7 @@ import {
   DollarSign
 } from 'lucide-react';
 import { initialSRI } from '../data';
+import { getLiveJalaliDateString, getTehranTimeString } from '../utils/dateHelper';
 
 interface NewsRisksViewProps {
   news: NewsItem[];
@@ -108,7 +109,7 @@ export const NewsRisksView: React.FC<NewsRisksViewProps> = ({
       setIsGeneratingAi(false);
       setCurrentAiSummary({
         ...currentAiSummary,
-        generatedTimestamp: '1403/08/15 ' + new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+        generatedTimestamp: `${getLiveJalaliDateString(0, true)} ${getTehranTimeString(true)}:00`,
       });
       if (onRefreshAiAnalysis) onRefreshAiAnalysis();
     }, 1500);

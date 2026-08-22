@@ -6,6 +6,7 @@ import {
   PortfolioTradeItem,
   SystemS1Signal,
 } from '../types';
+import { getLiveJalaliVerboseDate } from '../utils/dateHelper';
 import {
   Wallet,
   TrendingUp,
@@ -229,7 +230,7 @@ export const PortfolioView: React.FC<PortfolioViewProps> = ({
             </div>
           </div>
           <div className="text-[10px] text-[#dbc2b0] bg-[#322820] px-2 py-0.5 rounded-md inline-flex items-center gap-1 w-fit">
-            <span>تاریخ: امروز (۱۵ آبان)</span>
+            <span>تاریخ: امروز ({getLiveJalaliVerboseDate(0)})</span>
           </div>
         </div>
 
