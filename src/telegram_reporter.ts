@@ -146,9 +146,10 @@ export function formatDailyInputsSheetReport(payload: TelegramReportPayload): st
  * Format the 13-Point Standard Daily Report (Article 12 S1 Rulebook)
  */
 export function formatFull13Report(payload: TelegramReportPayload, aiAnalysisText?: string): string {
-  const { signal, marketScores, inputs, assets, trades } = payload;
+  const { signal, marketScores, inputs, assets, trades, daily13Sections } = payload;
   const channelTag = process.env.TELEGRAM_CHAT_ID || initialTelegramConfig.channelId;
   const analysis = aiAnalysisText || signal.summaryText;
+  const d = daily13Sections;
 
   const totalPortfolioValue = assets.reduce((acc, h) => acc + h.allocatedValueToman, 0);
   const totalProfitLossToman = totalPortfolioValue - 1000000000;
@@ -156,7 +157,7 @@ export function formatFull13Report(payload: TelegramReportPayload, aiAnalysisTex
 
   const getMetric = (id: string, fallback: string = '-') => {
     const found = inputs?.find((i) => i.id === id);
-    return found ? `${found.value} ${found.unit}` : fallback;
+    return found ? `${found.value} ${found.unit}`.trim() : fallback;
   };
 
   const marketRankings = [...marketScores]
@@ -168,28 +169,45 @@ export function formatFull13Report(payload: TelegramReportPayload, aiAnalysisTex
     .map((a) => `▫️ ${a.name}: ${a.weightPct}% (${(a.allocatedValueToman / 1000000).toLocaleString('fa-IR')} م.ت)`)
     .join('\n');
 
+  const goldOunceVal = d?.section2_globalMarkets?.goldOunce || getMetric('gold-ounce-price', '۴,۶۰۷ دلار');
+  const dxyVal = d?.section2_globalMarkets?.dxy || getMetric('global-dxy-index', '۱۰۱.۴');
+  const btcVal = d?.section3_crypto?.btcPrice || getMetric('btc-price', '۷۷,۲۹۰ دلار');
+  const btcEtfVal = d?.section3_crypto?.etfFlowAmount || getMetric('btc-etf-netflow', '-۲۸.۵ میلیون دلار');
+
+  const usdFreeVal = d?.section1_iranMacro?.usdFree || getMetric('usd-free-market', '۱۹۹,۹۰۰ تومان');
+  const usdtVal = d?.section1_iranMacro?.usdt || getMetric('usdt-toman-rate', '۱۹۹,۸۰۰ تومان');
+  const dirhamVal = getMetric('dirham-herat-arbitrage', '۵۴,۵۰۰ تومان');
+  const coinBubbleVal = d?.section1_iranMacro?.coinBubble || getMetric('gold-coin-bubble', '۲.۵٪');
+  const gold18kVal = d?.section1_iranMacro?.gold18k || getMetric('gold-18k-gram', '۲۰,۴۰۰,۰۰۰ تومان');
+  const interbankVal = getMetric('interbank-interest-rate', '۲۳.۸۵٪');
+
+  const tseChangeVal = d?.section4_bourse?.tseIndexChangePct || getMetric('tse-index-change', '+۰.۱۴٪');
+  const tseVolVal = d?.section4_bourse?.retailVolume || getMetric('tse-retail-volume', '۴۶,۴۲۱ میلیارد تومان');
+  const tseFlowVal = d?.section4_bourse?.realMoneyFlow || getMetric('tse-real-money-flow', '+۸۹۰ میلیارد تومان');
+  const tsePowerVal = d?.section4_bourse?.buyerPower || getMetric('tse-per-capita-power', '۱.۸۲');
+
   return `📋 **گزارش رسمی ۱۳ گانه سیستم مدیریت سرمایه و ریسک S1 (نسخه ۱.۳)**
 ⏰ پایش روزانه: ساعت ۱۷:۰۰ الی ۱۸:۰۰ • تاریخ: ${signal.lastUpdatedJalali}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-۱️⃣ **مشخصات گزارش:** نسخه S1 Engine v1.3 • کیفیت داده: ${signal.dataQualityScore}/${inputs?.length || 41} شاخص زنده • منابع: TSETMC, TGJU, CoinGlass, TradingView, CBI
+۱️⃣ **مشخصات گزارش:** نسخه S1 Engine v1.3 • کیفیت داده: ${signal.dataQualityScore}/${signal.totalMetricsCount || inputs?.length || 41} شاخص زنده • منابع: TSETMC, TGJU, CoinGlass, TradingView, CBI
 
 ۲️⃣ **بازارهای جهانی:** 
-• اونس طلا (XAU/USD): ${getMetric('gold-ounce-price', '۲,۹۲۵ دلار')} 🟢 | شاخص دلار (DXY): ۱۰۴.۲ 🟡 | بیت‌کوین: ${getMetric('btc-price', '۹۶,۴۰۰ دلار')} 🟡 | جریان ETF کریپتو: ${getMetric('btc-etf-netflow', '۳۵- م.دلار')} 🔴 | منبع: TradingView / CoinGlass
+• اونس طلا (XAU/USD): ${goldOunceVal} 🟢 | شاخص دلار (DXY): ${dxyVal} 🟡 | بیت‌کوین: ${btcVal} 🟡 | جریان ETF کریپتو: ${btcEtfVal} 🔴 | منبع: TradingView / CoinGlass
 
 ۳️⃣ **اقتصاد ایران و ارز:**
-• دلار آزاد: ${getMetric('usd-free-market', '۹۴,۵۰۰ تومان')} | تتر: ${getMetric('usdt-toman-rate', '۹۴,۸۰۰ تومان')} | درهم: ${getMetric('dirham-herat-arbitrage', '۲۵,۸۵۰ تومان')} | سکه امامی حباب: ${getMetric('gold-coin-bubble', '۲۱.۵٪')} | طلای ۱۸ عیار: ${getMetric('gold-18k-gram', '۸,۴۵۰,۰۰۰ تومان')} | نرخ بین‌بانکی: ${getMetric('interbank-interest-rate', '۲۳.۸۵٪')} | منبع: شبکه TGJU و بانک مرکزی
+• دلار آزاد: ${usdFreeVal} | تتر: ${usdtVal} | درهم: ${dirhamVal} | سکه امامی حباب: ${coinBubbleVal} | طلای ۱۸ عیار: ${gold18kVal} | نرخ بین‌بانکی: ${interbankVal} | منبع: شبکه TGJU و بانک مرکزی
 
 ۴️⃣ **بورس تهران (امتیاز ${marketScores.find(m => m.id === 'bourse')?.score || 82} / ۱۰۰ 🟢):**
-• تغییرات شاخص کل: ${getMetric('tse-index-change', '+۱.۴۵٪')} | ارزش معاملات خرد: ${getMetric('tse-retail-volume', '۹,۴۵۰ م.ت')} | ورود پول حقیقی: ${getMetric('tse-real-money-flow', '+۱,۴۲۰ م.ت')} | قدرت خریدار به فروشنده: ${getMetric('tse-per-capita-power', '۱.۳۸')} | خروج از درآمد ثابت: ${getMetric('tse-fixed-flow-out', '+۴۸۰ م.ت')} | منبع: TSETMC
+• تغییرات شاخص کل: ${tseChangeVal} | ارزش معاملات خرد: ${tseVolVal} | ورود پول حقیقی: ${tseFlowVal} | قدرت خریدار به فروشنده: ${tsePowerVal} | خروج از درآمد ثابت: ${getMetric('tse-fixed-flow-out', '+۶۸۰ م.ت')} | منبع: TSETMC
 
 ۵️⃣ **صندوق‌های سرمایه‌گذاری منتخب:**
-• عیار: قیمت روز با حباب نرمال (۰.۵٪+) | کهربا: حباب منصفانه (۰.۴٪+) | توان: با تخفیف نسبت به NAV | افران: سود موثر ۳۱.۵٪ | منبع: بورس کالا / Fipiran
+• عیار: ${d?.section6_ayarFund?.closingPrice || '۵۸,۴۵۵ تومان'} (حباب ${d?.section6_ayarFund?.navDiffPct || '+۰.۶۱٪'}) | کهربا: ${d?.section9_otherGoldFunds?.kahroba || 'حباب منصفانه (۰.۴٪+)'} | توان: ${d?.section8_tavanFund?.closingPrice || '۵۱,۹۵۴ ریال'} | افران: ${d?.section5_afranFund?.closingPrice || '۲,۲۱۵ ریال'} (سود موثر ۳۱.۵٪) | منبع: بورس کالا / Fipiran
 
 ۶️⃣ **ارزیابی دو مرحله‌ای ابزارهای طلا:**
 • مرحله ۱ (جذابیت طلا): ${marketScores.find(m => m.id === 'gold')?.score || 90}/۱۰۰ 🟢 | مرحله ۲ (انتخاب ابزار): صندوق شمش عیار با نمره ۹۴/۱۰۰ به عنوان ابزار پایه ۸۰٪ بخش طلا تعیین شد.
 
 ۷️⃣ **بیت‌کوین و رمزارزها (امتیاز ${marketScores.find(m => m.id === 'btc')?.score || 58} / ۱۰۰ 🔴 چراغ قرمز):**
-• قیمت: ${getMetric('btc-price', '۹۶,۴۰۰ دلار')} | شاخص ترس و طمع: ${getMetric('crypto-fear-greed', '۵۲')} | دامیننس بیت‌کوین: ${getMetric('btc-dominance', '۵۸.۴٪')} | وضعیت: عدم اقدام به دلیل نمره زیر ۶۰
+• قیمت: ${btcVal} | شاخص ترس و طمع: ${d?.section3_crypto?.cryptoFearGreed || getMetric('crypto-fear-greed', '۴۸ (خنثی)')} | دامیننس بیت‌کوین: ${d?.section3_crypto?.btcDominance || getMetric('btc-dominance', '۵۷.۸٪')} | وضعیت: عدم اقدام به دلیل نمره زیر ۶۰
 
 ۸️⃣ **رتبه‌بندی نهایی بازارها بر اساس اوزان قطعی:**
 ${marketRankings}

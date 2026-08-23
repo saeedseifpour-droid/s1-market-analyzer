@@ -379,6 +379,7 @@ export interface StandardDailyInput13Sections {
     buyQueueValue: string;
     sellQueueCount: string;
     sellQueueValue: string;
+    buyerPower?: string;
     marketNews: string;
   };
   section5_afranFund: {
