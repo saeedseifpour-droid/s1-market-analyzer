@@ -1,7 +1,35 @@
 /**
  * System S1 - Dynamic Persian (Jalali) Date & Time Utilities
  * Provides accurate live Jalali formatting for today, yesterday, and time in Tehran
+ * Uses mathematically exact Gregorian-to-Jalali conversion algorithms without ICU dependencies.
  */
+
+/**
+ * Mathematically precise Gregorian to Jalali conversion algorithm
+ */
+export function gregorianToJalali(gy: number, gm: number, gd: number): [number, number, number] {
+  const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+  const gy2 = (gm > 2) ? (gy + 1) : gy;
+  let days = 355666 + (365 * gy) + Math.floor((gy2 + 3) / 4) - Math.floor((gy2 + 99) / 100) + Math.floor((gy2 + 399) / 400) + gd + g_d_m[gm - 1];
+  let jy = -1595 + (33 * Math.floor(days / 12053));
+  days %= 12053;
+  jy += 4 * Math.floor(days / 1461);
+  days %= 1461;
+  if (days > 365) {
+    jy += Math.floor((days - 1) / 365);
+    days = (days - 1) % 365;
+  }
+  let jm: number;
+  let jd: number;
+  if (days < 186) {
+    jm = 1 + Math.floor(days / 31);
+    jd = 1 + (days % 31);
+  } else {
+    jm = 7 + Math.floor((days - 186) / 30);
+    jd = 1 + ((days - 186) % 30);
+  }
+  return [jy, jm, jd];
+}
 
 export function getTehranDate(offsetDays: number = 0): Date {
   const d = new Date();
@@ -39,40 +67,34 @@ const MONTH_NAMES_FA = [
   'اسفند',
 ];
 
+const WEEK_DAYS_FA = [
+  'یکشنبه',
+  'دوشنبه',
+  'سه‌شنبه',
+  'چهارشنبه',
+  'پنج‌شنبه',
+  'جمعه',
+  'شنبه',
+];
+
 export function getLiveJalaliDetails(offsetDays: number = 0): JalaliDateDetails {
   const d = getTehranDate(offsetDays);
+  const gy = d.getFullYear();
+  const gm = d.getMonth() + 1;
+  const gd = d.getDate();
 
-  let year = '1405';
-  let month = '05';
-  let day = '31';
-  let dayOfWeek = 'شنبه';
+  const [jy, jm, jd] = gregorianToJalali(gy, gm, gd);
 
-  try {
-    const formatterDigits = new Intl.DateTimeFormat('en-US-u-ca-persian', {
-      timeZone: 'Asia/Tehran',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-    const parts = formatterDigits.formatToParts(d);
-    year = parts.find((p) => p.type === 'year')?.value || '1405';
-    month = parts.find((p) => p.type === 'month')?.value || '05';
-    day = parts.find((p) => p.type === 'day')?.value || '31';
+  const year = String(jy);
+  const month = String(jm).padStart(2, '0');
+  const day = String(jd).padStart(2, '0');
+  const dayOfWeek = WEEK_DAYS_FA[d.getDay()] || 'یکشنبه';
 
-    const weekDayFormatter = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
-      timeZone: 'Asia/Tehran',
-      weekday: 'long',
-    });
-    dayOfWeek = weekDayFormatter.format(d);
-  } catch (err) {
-    console.warn('Error formatting Jalali date with Intl:', err);
-  }
-
-  const monthIndex = Math.max(0, Math.min(11, parseInt(month, 10) - 1));
-  const monthName = MONTH_NAMES_FA[monthIndex] || 'مرداد';
+  const monthIndex = Math.max(0, Math.min(11, jm - 1));
+  const monthName = MONTH_NAMES_FA[monthIndex] || 'شهریور';
 
   const jalaliStandard = `${year}/${month}/${day}`;
-  const dayNum = parseInt(day, 10);
+  const dayNum = jd;
   const jalaliFa = `${toPersianDigits(year)}/${toPersianDigits(month)}/${toPersianDigits(day)}`;
   const verbose = `${dayOfWeek} ${toPersianDigits(dayNum)} ${monthName} ${toPersianDigits(year)}`;
 
@@ -95,12 +117,13 @@ export function getLiveJalaliDetails(offsetDays: number = 0): JalaliDateDetails 
   };
 }
 
-export function toPersianDigits(val: string | number): string {
+export function toPersianDigits(val: string | number | undefined | null): string {
+  if (val === undefined || val === null) return '';
   return String(val).replace(/[0-9]/g, (d) => String.fromCharCode(d.charCodeAt(0) + 1728));
 }
 
 /**
- * Format date into Persian Jalali string (e.g. "۱۴۰۵/۰۵/۳۱" or "1405/05/31")
+ * Format date into Persian Jalali string (e.g. "۱۴۰۵/۰۶/۰۱" or "1405/06/01")
  */
 export function getLiveJalaliDateString(offsetDays: number = 0, latinDigits: boolean = false): string {
   const details = getLiveJalaliDetails(offsetDays);
@@ -108,7 +131,7 @@ export function getLiveJalaliDateString(offsetDays: number = 0, latinDigits: boo
 }
 
 /**
- * Get full verbose Jalali date with Persian month name (e.g. "شنبه ۳۱ مرداد ۱۴۰۵")
+ * Get full verbose Jalali date with Persian month name (e.g. "یکشنبه ۱ شهریور ۱۴۰۵")
  */
 export function getLiveJalaliVerboseDate(offsetDays: number = 0): string {
   return getLiveJalaliDetails(offsetDays).verbose;
@@ -120,17 +143,10 @@ export function getLiveJalaliVerboseDate(offsetDays: number = 0): string {
 export function getTehranTimeString(latinDigits: boolean = false): string {
   const d = new Date();
   try {
-    const timeStr = new Intl.DateTimeFormat('fa-IR', {
-      timeZone: 'Asia/Tehran',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(d);
-
-    if (latinDigits) {
-      return timeStr.replace(/[۰-۹]/g, (w) => (w.charCodeAt(0) - 1776).toString());
-    }
-    return timeStr;
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
+    return latinDigits ? timeStr : toPersianDigits(timeStr);
   } catch {
     return latinDigits ? '17:30' : '۱۷:۳۰';
   }
@@ -142,4 +158,5 @@ export function getTehranTimeString(latinDigits: boolean = false): string {
 export function getLiveDateTimeString(offsetDays: number = 0, timeStr: string = '17:00'): string {
   return `${getLiveJalaliDateString(offsetDays, true)} ${timeStr}`;
 }
+
 

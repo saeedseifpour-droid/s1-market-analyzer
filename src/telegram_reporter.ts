@@ -1,4 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
+import { getLiveJalaliDetails } from './utils/dateHelper';
 import {
   initialMarketScores,
   initialSignal,
@@ -281,11 +282,10 @@ export function formatStandardDailyInputTemplate(payload: TelegramReportPayload)
   const { signal, inputs, daily13Sections } = payload;
   const d = daily13Sections;
 
-  const jalaliDate = d?.metadata?.jalaliDate || signal.lastUpdatedJalali?.split(' ')[0] || '۱۴۰۴/۱۲/۰۲';
-  const now = new Date();
-  const miladiDate = d?.metadata?.miladiDate || now.toISOString().split('T')[0];
-  const weekDays = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه', 'شنبه'];
-  const dayName = d?.metadata?.dayOfWeek || weekDays[now.getDay()];
+  const dateDetails = getLiveJalaliDetails(0);
+  const jalaliDate = d?.metadata?.jalaliDate || dateDetails.jalaliStandard;
+  const miladiDate = d?.metadata?.miladiDate || dateDetails.miladiDate;
+  const dayName = d?.metadata?.dayOfWeek || dateDetails.dayOfWeek;
 
   const getV = (id: string, fallback: string = '-') => {
     const item = inputs?.find((i) => i.id === id);
@@ -295,93 +295,93 @@ export function formatStandardDailyInputTemplate(payload: TelegramReportPayload)
 
   // Section 1
   const s1 = d?.section1_iranMacro;
-  const usdFree = s1?.usdFree || getV('usd-free-market', '۹۴,۵۰۰ تومان');
-  const usdYesterday = s1?.usdYesterday || '۹۴,۱۰۰ تومان';
-  const usdChangePct = s1?.usdChangePct || '+۰.۴۲٪';
-  const usdt = s1?.usdt || getV('usdt-toman-rate', '۹۴,۸۰۰ تومان');
-  const usdtYesterday = s1?.usdtYesterday || '۹۴,۲۰۰ تومان';
-  const usdtChangePct = s1?.usdtChangePct || '+۰.۶۳٪';
-  const gold18k = s1?.gold18k || getV('gold-18k-gram', '۸,۴۵۰,۰۰۰ تومان');
-  const gold18kYesterday = s1?.gold18kYesterday || '۸,۳۸۰,۰۰۰ تومان';
-  const gold18kChangePct = s1?.gold18kChangePct || '+۰.۸۳٪';
-  const sekeEmami = s1?.sekeEmami || getV('gold-coin-emami', '۹۵,۲۰۰,۰۰۰ تومان');
-  const sekeYesterday = s1?.sekeYesterday || '۹۴,۳۰۰,۰۰۰ تومان';
-  const sekeChangePct = s1?.sekeChangePct || '+۰.۹۵٪';
-  const coinBubble = s1?.coinBubble || getV('gold-coin-bubble', '۲۱.۵٪');
-  const econNews = s1?.econNews || 'ثبات در سامانه توافقی ارز و تداوم حراج شمش طلا در مرکز مبادله ایران';
+  const usdFree = s1?.usdFree || getV('usd-free-market', '۱۹۹,۹۰۰ تومان');
+  const usdYesterday = s1?.usdYesterday || '۱۹۱,۲۰۰ تومان';
+  const usdChangePct = s1?.usdChangePct || '+۴.۵۵٪';
+  const usdt = s1?.usdt || getV('usdt-toman-rate', '۱۹۹,۸۰۰ تومان');
+  const usdtYesterday = s1?.usdtYesterday || '۱۸۸,۰۰۰ تومان';
+  const usdtChangePct = s1?.usdtChangePct || '+۶.۲۸٪';
+  const gold18k = s1?.gold18k || getV('gold-18k-gram', '۲۰,۴۰۰,۰۰۰ تومان');
+  const gold18kYesterday = s1?.gold18kYesterday || '۱۹,۸۵۰,۰۰۰ تومان';
+  const gold18kChangePct = s1?.gold18kChangePct || '+۲.۷۷٪';
+  const sekeEmami = s1?.sekeEmami || getV('gold-coin-emami', '۱۹۹,۵۴۰,۰۰۰ تومان');
+  const sekeYesterday = s1?.sekeYesterday || '۲۰۴,۵۰۰,۰۰۰ تومان';
+  const sekeChangePct = s1?.sekeChangePct || '-۲.۴۲٪';
+  const coinBubble = s1?.coinBubble || getV('gold-coin-bubble', '۲.۵٪');
+  const econNews = s1?.econNews || 'تداوم عرضه ارز در بازار توافقی و ثبات نسبی در معاملات مرکز مبادله ارز و طلای ایران';
 
   // Section 2
   const s2 = d?.section2_globalMarkets;
-  const goldOunce = s2?.goldOunce || getV('gold-ounce-price', '۲,۹۲۵ دلار');
-  const ounceYesterday = s2?.ounceYesterday || '۲,۹۱۰ دلار';
-  const ounceChangePct = s2?.ounceChangePct || '+۰.۵۱٪';
-  const dxy = s2?.dxy || getV('global-dxy-index', '۱۰۴.۲');
-  const dxyChangePct = s2?.dxyChangePct || '-۰.۱۵٪';
-  const brentOil = s2?.brentOil || getV('global-brent-oil', '۷۶.۴ دلار');
-  const brentChangePct = s2?.brentChangePct || '+۰.۳۵٪';
-  const vix = s2?.vix || getV('global-vix-index', '۱۴.۲ واحد');
-  const vixChangePct = s2?.vixChangePct || '-۲.۱٪';
-  const globalFearGreed = s2?.globalFearGreed || getV('global-market-sentiment', '۶۲ (طمع ملایم)');
-  const globalNews = s2?.globalNews || 'انتظار بازارها برای تثبیت نرخ بهره فدرال رزرو و افزایش ذخایر طلای بانک‌های مرکزی';
+  const goldOunce = s2?.goldOunce || getV('gold-ounce-price', '۴,۶۰۷ دلار');
+  const ounceYesterday = s2?.ounceYesterday || '۴,۶۱۱ دلار';
+  const ounceChangePct = s2?.ounceChangePct || '-۰.۰۸٪';
+  const dxy = s2?.dxy || getV('global-dxy-index', '۱۰۱.۴');
+  const dxyChangePct = s2?.dxyChangePct || '-۰.۲۲٪';
+  const brentOil = s2?.brentOil || getV('global-brent-oil', '۷۲.۸ دلار');
+  const brentChangePct = s2?.brentChangePct || '+۰.۴۵٪';
+  const vix = s2?.vix || getV('global-vix-index', '۱۴.۸ واحد');
+  const vixChangePct = s2?.vixChangePct || '-۱.۵٪';
+  const globalFearGreed = s2?.globalFearGreed || getV('global-market-sentiment', '۶۴ (طمع)');
+  const globalNews = s2?.globalNews || 'تثبیت اونس جهانی طلا بالای ۴۶۰۰ دلار و نگاه بازارهای جهانی به سیاست‌های پولی فدرال رزرو آمریکا';
 
   // Section 3
   const s3 = d?.section3_crypto;
-  const btcPrice = s3?.btcPrice || getV('btc-price', '۹۶,۴۰۰ دلار');
-  const btcYesterday = s3?.btcYesterday || '۹۷,۲۰۰ دلار';
-  const btcChangePct = s3?.btcChangePct || '-۰.۸۲٪';
-  const ethPrice = s3?.ethPrice || getV('crypto-eth-price', '۲,۷۴۰ دلار');
-  const ethChangePct = s3?.ethChangePct || '-۱.۱۰٪';
-  const btcDominance = s3?.btcDominance || getV('btc-dominance', '۵۸.۴٪');
-  const marketCap = s3?.marketCap || getV('crypto-total-marketcap', '۳.۲۵ تریلیون دلار');
-  const etfFlow = s3?.etfFlow || 'خروج نقدینگی';
-  const etfFlowAmount = s3?.etfFlowAmount || getV('btc-etf-netflow', '-۳۵.۰ میلیون دلار');
-  const fundingRate = s3?.fundingRate || getV('crypto-funding-rate', '+۰.۰۰۸٪');
-  const openInterest = s3?.openInterest || getV('crypto-open-interest', '۳۸.۵ میلیارد دلار');
-  const cryptoFearGreed = s3?.cryptoFearGreed || getV('crypto-fear-greed', '۵۲ (خنثی)');
-  const cryptoNews = s3?.cryptoNews || 'نوسان بیت‌کوین در کانال ۹۶ هزار دلار با ثبت خروج مقطعی از ETFهای اسپات';
+  const btcPrice = s3?.btcPrice || getV('btc-price', '۷۷,۲۹۰ دلار');
+  const btcYesterday = s3?.btcYesterday || '۷۷,۲۷۶ دلار';
+  const btcChangePct = s3?.btcChangePct || '+۰.۰۲٪';
+  const ethPrice = s3?.ethPrice || getV('crypto-eth-price', '۲,۴۸۵ دلار');
+  const ethChangePct = s3?.ethChangePct || '+۰.۲۰٪';
+  const btcDominance = s3?.btcDominance || getV('btc-dominance', '۵۷.۸٪');
+  const marketCap = s3?.marketCap || getV('crypto-total-marketcap', '۲.۸۶ تریلیون دلار');
+  const etfFlow = s3?.etfFlow || 'خروج خفیف نقدینگی';
+  const etfFlowAmount = s3?.etfFlowAmount || getV('btc-etf-netflow', '-۲۸.۵ میلیون دلار');
+  const fundingRate = s3?.fundingRate || getV('crypto-funding-rate', '+۰.۰۰۶٪');
+  const openInterest = s3?.openInterest || getV('crypto-open-interest', '۳۴.۲ میلیارد دلار');
+  const cryptoFearGreed = s3?.cryptoFearGreed || getV('crypto-fear-greed', '۴۸ (خنثی)');
+  const cryptoNews = s3?.cryptoNews || 'تثبیت و نوسان بیت‌کوین در کانال ۷۷ هزار دلار با حجم معاملات ۲۴ ساعته ۶۹ میلیارد دلاری';
 
   // Section 4
   const s4 = d?.section4_bourse;
-  const tseIndex = s4?.tseIndex || getV('tse-overall-index', '۲,۸۴۵,۲۰۰ واحد');
-  const tseYesterday = s4?.tseYesterday || '۲,۸۰۴,۵۰۰ واحد';
-  const tseIndexChangePct = s4?.tseIndexChangePct || getV('tse-index-change', '+۱.۴۵٪');
-  const tseEqualWeight = s4?.tseEqualWeight || getV('tse-equal-weight-index', '۸۴۲,۱۰۰ واحد');
-  const tseEqualWeightChangePct = s4?.tseEqualWeightChangePct || '+۱.۲۲٪';
-  const retailVolume = s4?.retailVolume || getV('tse-retail-volume', '۹,۴۵۰ میلیارد تومان');
-  const realMoneyFlow = s4?.realMoneyFlow || getV('tse-real-money-flow', '+۱,۴۲۰ میلیارد تومان');
-  const positiveSymbols = s4?.positiveSymbolsCount || '۵۴۲ نماد';
-  const negativeSymbols = s4?.negativeSymbolsCount || '۲۳۸ نماد';
-  const buyQueueCount = s4?.buyQueueCount || '۱۶۴ نماد';
-  const buyQueueValue = s4?.buyQueueValue || '۱,۸۵۰ میلیارد تومان';
-  const sellQueueCount = s4?.sellQueueCount || '۳۲ نماد';
-  const sellQueueValue = s4?.sellQueueValue || '۲۱۰ میلیارد تومان';
-  const marketNews = s4?.marketNews || 'تداوم تقاضای قوی در گروه‌های دلاری و فلزات اساسی همراه با برتری قدرت خریداران';
+  const tseIndex = s4?.tseIndex || getV('tse-overall-index', '۶,۰۶۹,۸۸۸ واحد');
+  const tseYesterday = s4?.tseYesterday || '۶,۰۷۳,۲۹۴ واحد';
+  const tseIndexChangePct = s4?.tseIndexChangePct || getV('tse-index-change', '+۰.۱۴٪');
+  const tseEqualWeight = s4?.tseEqualWeight || getV('tse-equal-weight-index', '۱,۷۲۱,۵۰۰ واحد');
+  const tseEqualWeightChangePct = s4?.tseEqualWeightChangePct || '+۰.۲۱٪';
+  const retailVolume = s4?.retailVolume || getV('tse-retail-volume', '۴۶,۴۲۱ میلیارد تومان');
+  const realMoneyFlow = s4?.realMoneyFlow || getV('tse-real-money-flow', '+۸۹۰ میلیارد تومان');
+  const positiveSymbols = s4?.positiveSymbolsCount || '۵۱۲ نماد';
+  const negativeSymbols = s4?.negativeSymbolsCount || '۲۴۸ نماد';
+  const buyQueueCount = s4?.buyQueueCount || '۱۴۲ نماد';
+  const buyQueueValue = s4?.buyQueueValue || '۹,۴۵۰ میلیارد تومان';
+  const sellQueueCount = s4?.sellQueueCount || '۳۸ نماد';
+  const sellQueueValue = s4?.sellQueueValue || '۱,۱۲۰ میلیارد تومان';
+  const marketNews = s4?.marketNews || 'تثبیت شاخص کل بورس تهران در محدوده ۶ میلیون و ۶۹ هزار واحد و ارزش معاملات خرد پرحجم ۴۶ همت';
 
   // Section 5 (Afran)
   const s5 = d?.section5_afranFund;
-  const afranPrice = s5?.closingPrice || getV('fund-afran-price', '۲,۲۱۰ ریال');
-  const afranNav = s5?.navPerUnit || '۲,۲۱۰ ریال';
+  const afranPrice = s5?.closingPrice || getV('fund-afran-price', '۲,۲۱۵ ریال');
+  const afranNav = s5?.navPerUnit || '۲,۲۱۵ ریال';
   const afranNavDiff = s5?.navDiffPct || '۰.۰٪';
-  const afranVol = s5?.volumeUnits || '۱,۲۵۰,۰۰۰,۰۰۰ واحد';
-  const afranVal = s5?.valueBillionToman || getV('fund-afran-volume', '۲۷۶ میلیارد تومان');
-  const afranFlow = s5?.moneyFlow || '+۶۵ میلیارد تومان';
-  const afranBuyCapita = s5?.perCapitaBuy || '۷۲ میلیون تومان';
-  const afranSellCapita = s5?.perCapitaSell || '۳۸ میلیون تومان';
-  const afranPower = s5?.buyerPower || '۱.۸۹';
-  const afranAum = s5?.aum || getV('fund-afran-aum', '۲۴,۵۰۰ میلیارد تومان');
+  const afranVol = s5?.volumeUnits || '۱,۸۵۰,۰۰۰,۰۰۰ واحد';
+  const afranVal = s5?.valueBillionToman || getV('fund-afran-volume', '۴۱۰ میلیارد تومان');
+  const afranFlow = s5?.moneyFlow || '-۳۲۰ میلیارد تومان (جابجایی به سهام)';
+  const afranBuyCapita = s5?.perCapitaBuy || '۸۵ میلیون تومان';
+  const afranSellCapita = s5?.perCapitaSell || '۴۲ میلیون تومان';
+  const afranPower = s5?.buyerPower || '۱.۲۵';
+  const afranAum = s5?.aum || getV('fund-afran-aum', '۲۸,۰۰۰ میلیارد تومان');
 
   // Section 6 (Ayar)
   const s6 = d?.section6_ayarFund;
-  const ayarPrice = s6?.closingPrice || getV('fund-ayar-price', '۱۸,۴۵۰ تومان');
-  const ayarNav = s6?.navPerUnit || '۱۸,۳۶۰ تومان';
-  const ayarNavDiff = s6?.navDiffPct || '+۰.۴۹٪';
-  const ayarVol = s6?.volumeUnits || '۴۸,۵۰۰,۰۰۰ واحد';
-  const ayarVal = s6?.valueBillionToman || getV('fund-ayar-volume', '۸۹۵ میلیارد تومان');
-  const ayarFlow = s6?.moneyFlow || '+۱۴۵ میلیارد تومان';
-  const ayarBuyCapita = s6?.perCapitaBuy || '۶۴ میلیون تومان';
-  const ayarSellCapita = s6?.perCapitaSell || '۴۱ میلیون تومان';
-  const ayarPower = s6?.buyerPower || '۱.۵۶';
-  const ayarAum = s6?.aum || getV('fund-ayar-aum', '۱۸,۲۰۰ میلیارد تومان');
+  const ayarPrice = s6?.closingPrice || getV('fund-ayar-price', '۵۸,۴۵۵ تومان');
+  const ayarNav = s6?.navPerUnit || '۵۸,۱۰۰ تومان';
+  const ayarNavDiff = s6?.navDiffPct || '+۰.۶۱٪';
+  const ayarVol = s6?.volumeUnits || '۲۴,۵۰۰,۰۰۰ واحد';
+  const ayarVal = s6?.valueBillionToman || getV('fund-ayar-volume', '۱,۴۳۲ میلیارد تومان');
+  const ayarFlow = s6?.moneyFlow || '+۲۴۰ میلیارد تومان';
+  const ayarBuyCapita = s6?.perCapitaBuy || '۸۴ میلیون تومان';
+  const ayarSellCapita = s6?.perCapitaSell || '۴۵ میلیون تومان';
+  const ayarPower = s6?.buyerPower || '۱.۴۴';
+  const ayarAum = s6?.aum || getV('fund-ayar-aum', '۲۶,۵۰۰ میلیارد تومان');
 
   // Section 7 (Khebargan)
   const s7 = d?.section7_khebarganFund;

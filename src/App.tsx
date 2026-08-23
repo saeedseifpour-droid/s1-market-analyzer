@@ -325,6 +325,16 @@ export default function App() {
               daily13Sections={daily13Sections}
               auditReport={auditReport}
               onOpenValidationCore={() => setIsValidationCoreModalOpen(true)}
+              onApplyLiveResult={(result) => {
+                setInputs(result.updatedInputs);
+                if (result.validated13Sections) {
+                  setDaily13Sections(result.validated13Sections);
+                }
+                if (result.auditReport) {
+                  setAuditReport(result.auditReport);
+                }
+                handleRecalculateEngine(result.updatedInputs);
+              }}
             />
           )}
 

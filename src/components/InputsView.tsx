@@ -37,6 +37,7 @@ interface InputsViewProps {
   daily13Sections?: StandardDailyInput13Sections;
   auditReport?: ValidationAuditReport | null;
   onOpenValidationCore?: () => void;
+  onApplyLiveResult?: (result: LiveExtractionResult) => void;
 }
 
 export const InputsView: React.FC<InputsViewProps> = ({
@@ -46,6 +47,7 @@ export const InputsView: React.FC<InputsViewProps> = ({
   daily13Sections,
   auditReport,
   onOpenValidationCore,
+  onApplyLiveResult,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -102,13 +104,17 @@ export const InputsView: React.FC<InputsViewProps> = ({
   const handleAiLiveExtraction = async () => {
     setIsAiExtracting(true);
     try {
-      const result: LiveExtractionResult = await fetchLiveMarketDataViaGemini(localInputs);
+      const result: LiveExtractionResult = await fetchLiveMarketDataViaGemini(localInputs, daily13Sections);
       setLocalInputs(result.updatedInputs);
-      onUpdateInputs(result.updatedInputs);
-      onRecalculateEngine(result.updatedInputs);
+      if (onApplyLiveResult) {
+        onApplyLiveResult(result);
+      } else {
+        onUpdateInputs(result.updatedInputs);
+        onRecalculateEngine(result.updatedInputs);
+      }
       setToastMessage(
         result.isAiGrounded
-          ? 'استخراج داده‌های زنده بازارهای ایران و جهان با جستجوی بلادرنگ با موفقیت انجام شد.'
+          ? 'استخراج داده‌های زنده و اعتبارسنجی فرم سیزده‌گانه با موفقیت انجام شد.'
           : 'به‌روزرسانی ساختاریافته پارامترهای سیستم با موفقیت اعمال گردید.'
       );
     } catch (e: any) {
