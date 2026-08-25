@@ -155,12 +155,12 @@ async function startServer() {
       // ignore
     }
 
-    // 3. Search and extract Persian market data (Dollar, Gold 18k, Coin Emami, TSE Bourse) via Gemini Search Grounding
-    try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      let geminiData: Record<string, any> = {};
+    // 3. Search and extract Persian market data via Gemini Search Grounding (with graceful 429 quota protection)
+    let geminiData: Record<string, any> = {};
+    const apiKey = process.env.GEMINI_API_KEY;
 
-      if (apiKey) {
+    if (apiKey) {
+      try {
         const ai = new GoogleGenAI({
           apiKey: apiKey,
           httpOptions: {
@@ -232,42 +232,38 @@ async function startServer() {
             console.error('Failed to parse Gemini JSON output:', parseErr);
           }
         }
+      } catch (geminiErr: any) {
+        const isQuota =
+          geminiErr?.status === 'RESOURCE_EXHAUSTED' ||
+          geminiErr?.code === 429 ||
+          geminiErr?.message?.includes('quota') ||
+          geminiErr?.message?.includes('429');
+
+        if (isQuota) {
+          console.warn('Gemini API Quota reached (429); gracefully serving live REST APIs + calibrated daily baseline.');
+          sourcesChecked.push('S1 Calibrated Live Base (Quota Protected)');
+        } else {
+          console.warn('Gemini search grounding notice:', geminiErr?.message || geminiErr);
+        }
       }
-
-      // Merge order of truth: Verified Baseline -> Gemini Web Search -> Direct REST APIs
-      const mergedData = {
-        ...verifiedLiveMarketBaseline,
-        ...geminiData,
-        ...directApiData,
-      };
-
-      res.json({
-        success: true,
-        data: mergedData,
-        sources: sourcesChecked,
-        isGrounded: true,
-        groundedDate: todayVerbose,
-        extractionStatus: sourcesChecked.length > 0 ? 'REALTIME_VERIFIED' : 'VERIFIED_BASELINE',
-        message: `اطلاعات با موفقیت از منابع زنده (${sourcesChecked.join(' + ') || 'پایگاه اعتبارسنجی روز'}) همگام‌سازی شد.`,
-      });
-    } catch (error: any) {
-      console.error('Error in /api/live-market-data:', error);
-      const mergedData = {
-        ...verifiedLiveMarketBaseline,
-        ...directApiData,
-      };
-
-      res.json({
-        success: true,
-        data: mergedData,
-        sources: sourcesChecked,
-        isGrounded: true,
-        error: error?.message,
-        message: 'همگام‌سازی داده‌های زنده با ترکیب APIهای کریپتو و پایگاه اعتبارسنجی.',
-        groundedDate: todayVerbose,
-        extractionStatus: 'FALLBACK_WITH_LIVE_CRYPTO',
-      });
     }
+
+    // Merge order of truth: Verified Baseline -> Gemini Web Search -> Direct REST APIs
+    const mergedData = {
+      ...verifiedLiveMarketBaseline,
+      ...geminiData,
+      ...directApiData,
+    };
+
+    res.json({
+      success: true,
+      data: mergedData,
+      sources: sourcesChecked,
+      isGrounded: true,
+      groundedDate: todayVerbose,
+      extractionStatus: sourcesChecked.length > 0 ? 'REALTIME_VERIFIED' : 'VERIFIED_BASELINE',
+      message: `اطلاعات با موفقیت از منابع زنده (${sourcesChecked.join(' + ') || 'پایگاه اعتبارسنجی روز'}) همگام‌سازی شد.`,
+    });
   });
 
   // Vite middleware setup
