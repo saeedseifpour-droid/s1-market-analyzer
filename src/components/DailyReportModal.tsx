@@ -10,6 +10,8 @@ import {
   Search,
   Layers,
   Sparkles,
+  AlertOctagon,
+  RefreshCw,
 } from 'lucide-react';
 import {
   SystemS1Signal,
@@ -27,6 +29,7 @@ import {
   formatDailyInputsSheetReport,
   formatStandardDailyInputTemplate
 } from '../telegram_reporter';
+import { checkDataFreshness } from '../utils/s1DataEngine';
 
 interface DailyReportModalProps {
   isOpen: boolean;
@@ -220,7 +223,35 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
         </div>
 
         {/* Scrollable Body */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-6 flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
+          {(() => {
+            const freshness = checkDataFreshness(daily13Sections?.metadata?.jalaliDate || signal.lastUpdatedJalali);
+            if (freshness.isStale) {
+              return (
+                <div className="bg-[#ef4444]/15 border border-[#ef4444]/50 rounded-xl p-3.5 flex items-start gap-3 text-xs">
+                  <AlertOctagon className="w-5 h-5 text-[#ef4444] shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="font-bold text-[#ffb4ab]">
+                      ⚠️ هشدار انقضای داده‌های گزارش: اطلاعات این پیش‌نمایش متعلق به {freshness.dataDateJalali} است.
+                    </span>
+                    <p className="text-[#dbc2b0]/90 text-[11px] leading-relaxed">
+                      طبق منشور S1، تصمیم‌گیری و اتکا به داده‌های قدیمی فاقد اعتبار است. پیش از اقدام یا ارسال، لطفاً ورودی‌های امروز ({freshness.todayVerbose}) را به‌روزرسانی نمایید.
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div className="bg-[#10b981]/10 border border-[#10b981]/30 rounded-xl p-3 flex items-center justify-between gap-3 text-xs text-[#10b981]">
+                <span className="font-semibold">
+                  ✅ داده‌های گزارش مربوط به پایش امروز ({freshness.todayVerbose}) و کاملاً معتبر است.
+                </span>
+                <span className="font-mono-num text-[11px] text-[#dbc2b0]/70">
+                  تاریخ: {freshness.todayJalali}
+                </span>
+              </div>
+            );
+          })()}
           {activeTab === 'dailyInput' ? (
             <div className="bg-[#18110a] border border-[#554336] rounded-xl p-5 font-mono text-xs sm:text-sm text-[#f2dfd3] whitespace-pre-wrap leading-relaxed select-text shadow-inner">
               {dailyInputMarkdown}

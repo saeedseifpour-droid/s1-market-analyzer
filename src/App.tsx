@@ -54,20 +54,28 @@ import {
   getTehranTimeString,
   getLiveDateTimeString,
 } from './utils/dateHelper';
+import {
+  loadUnifiedState,
+  persistUnifiedState,
+  checkDataFreshness,
+} from './utils/s1DataEngine';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
-  const [marketScores, setMarketScores] = useState<MarketScoreItem[]>(initialMarketScores);
-  const [signal, setSignal] = useState<SystemS1Signal>(initialSignal);
-  const [inputs, setInputs] = useState<InputMetric[]>(initialDailyInputs);
-  const [daily13Sections, setDaily13Sections] = useState<StandardDailyInput13Sections>(getDefault13SectionsData);
-  const [auditReport, setAuditReport] = useState<ValidationAuditReport | null>(() => {
-    const initialReport = runS1ValidationCore(initialDailyInputs, getDefault13SectionsData());
-    return initialReport.auditReport;
-  });
+  
+  // Unified S1 State initialized from persistent unified engine with dynamic freshness check
+  const [unifiedState] = useState(() => loadUnifiedState());
+  const [marketScores, setMarketScores] = useState<MarketScoreItem[]>(unifiedState.marketScores);
+  const [signal, setSignal] = useState<SystemS1Signal>(unifiedState.signal);
+  const [inputs, setInputs] = useState<InputMetric[]>(unifiedState.inputs);
+  const [daily13Sections, setDaily13Sections] = useState<StandardDailyInput13Sections>(unifiedState.daily13Sections);
+  const [auditReport, setAuditReport] = useState<ValidationAuditReport | null>(unifiedState.auditReport);
   const [funds, setFunds] = useState<FundItem[]>(initialFunds);
   const [telegramConfig, setTelegramConfig] = useState<TelegramConfig>(initialTelegramConfig);
   const [historyLogs, setHistoryLogs] = useState<SystemHistoryLog[]>(initialHistoryLogs);
+
+  // Dynamic Data Freshness Status
+  const freshnessStatus = checkDataFreshness(daily13Sections?.metadata?.jalaliDate || signal.lastUpdatedJalali);
 
   // Paper Portfolio Management State
   const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary>(initialPortfolioSummary);
@@ -218,6 +226,7 @@ export default function App() {
     };
 
     setSignal(updatedSignal);
+    persistUnifiedState(updatedInputs, daily13Sections, updatedSignal);
   };
 
   const handleApplyFreshSignal = (
@@ -227,6 +236,9 @@ export default function App() {
     newAudit?: ValidationAuditReport
   ) => {
     setSignal(freshSignal);
+    const finalInputs = newInputs && newInputs.length > 0 ? newInputs : inputs;
+    const finalSections = new13Sections || daily13Sections;
+
     if (newInputs && newInputs.length > 0) {
       setInputs(newInputs);
       handleRecalculateEngine(newInputs);
@@ -237,6 +249,9 @@ export default function App() {
     if (newAudit) {
       setAuditReport(newAudit);
     }
+
+    persistUnifiedState(finalInputs, finalSections, freshSignal);
+
     // Add to history log
     const newLog: SystemHistoryLog = {
       id: `log-${Date.now()}`,
@@ -258,6 +273,7 @@ export default function App() {
     const validated = runS1ValidationCore(inputs, daily13Sections);
     setAuditReport(validated.auditReport);
     setDaily13Sections(validated.validated13Sections);
+    persistUnifiedState(inputs, validated.validated13Sections, signal);
   };
 
   return (
@@ -285,6 +301,7 @@ export default function App() {
             <DashboardView
               signal={signal}
               marketScores={marketScores}
+              freshnessStatus={freshnessStatus}
               onOpenTelegramModal={() => setIsTelegramModalOpen(true)}
               onOpenRunNowModal={() => setIsRunNowModalOpen(true)}
               onOpenDailyReportModal={() => setIsDailyReportModalOpen(true)}

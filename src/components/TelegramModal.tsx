@@ -25,6 +25,7 @@ import {
   Zap,
   Layers,
   ShieldCheck,
+  AlertOctagon,
 } from 'lucide-react';
 import {
   formatFull13Report,
@@ -34,6 +35,7 @@ import {
   sendDualTelegramPipeline,
   generateGeminiExecutiveAnalysis,
 } from '../telegram_reporter';
+import { checkDataFreshness } from '../utils/s1DataEngine';
 
 interface TelegramModalProps {
   isOpen: boolean;
@@ -457,6 +459,25 @@ export const TelegramModal: React.FC<TelegramModalProps> = ({
                   </button>
                 </div>
               )}
+
+              {/* Data Freshness Check in Telegram Modal */}
+              {(() => {
+                const freshness = checkDataFreshness(daily13Sections?.metadata?.jalaliDate || signal.lastUpdatedJalali);
+                if (freshness.isStale) {
+                  return (
+                    <div className="bg-[#ef4444]/15 border border-[#ef4444]/50 rounded-xl p-3 flex items-start gap-2.5 text-xs text-[#ffb4ab]">
+                      <AlertOctagon className="w-4 h-4 text-[#ef4444] shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold">⚠️ هشدار ارسال داده‌های منقضی: </span>
+                        <span>
+                          داده‌های پایش متعلق به تاریخ {freshness.dataDateJalali} است. برای ارسال اطلاعات دقیق، ورودی‌های زنده امروز ({freshness.todayVerbose}) را دریافت و ثبت فرمایید.
+                        </span>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
 
               {/* Report Preview Box */}
               <div className="space-y-1.5">

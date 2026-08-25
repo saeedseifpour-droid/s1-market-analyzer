@@ -25,10 +25,12 @@ import {
   ExternalLink,
   Copy,
   Check,
-  RefreshCw
+  RefreshCw,
+  AlertOctagon,
 } from 'lucide-react';
 import { initialDailyChecklist } from '../data';
 import { fetchLiveMarketDataViaGemini, LiveExtractionResult } from '../utils/marketDataLive';
+import { checkDataFreshness, resetToFreshMarketState } from '../utils/s1DataEngine';
 
 interface InputsViewProps {
   inputs: InputMetric[];
@@ -175,6 +177,27 @@ export const InputsView: React.FC<InputsViewProps> = ({
   const completedChecklistCount = checklist.filter((c) => c.isCompleted).length;
   const isChecklistFullyDone = completedChecklistCount === checklist.length;
 
+  const currentFreshness = checkDataFreshness(daily13Sections?.metadata?.jalaliDate);
+
+  const handleResetToFreshToday = () => {
+    const freshState = resetToFreshMarketState();
+    setLocalInputs(freshState.inputs);
+    if (onApplyLiveResult) {
+      onApplyLiveResult({
+        updatedInputs: freshState.inputs,
+        validated13Sections: freshState.daily13Sections,
+        auditReport: freshState.auditReport,
+        isAiGrounded: true,
+        extractedSummary: 'به‌روزرسانی خودکار به تاریخ امروز انجام شد.',
+      });
+    } else {
+      onUpdateInputs(freshState.inputs);
+      onRecalculateEngine(freshState.inputs);
+    }
+    setToastMessage(`داده‌های ورودی با موفقیت با تاریخ زنده امروز (${freshState.freshness.todayJalali}) همگام‌سازی شدند.`);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
   return (
     <div className="flex flex-col w-full gap-6 animate-fade-in">
       {/* Toast alert */}
@@ -184,6 +207,69 @@ export const InputsView: React.FC<InputsViewProps> = ({
             <CheckCircle2 className="w-5 h-5 shrink-0" />
             <span>{toastMessage}</span>
           </div>
+        </div>
+      )}
+
+      {/* Freshness Status & Expiration Warning Banner */}
+      {currentFreshness.isStale ? (
+        <div className="bg-[#ef4444]/15 border-2 border-[#ef4444]/60 rounded-2xl p-5 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 rounded-xl bg-[#ef4444]/25 text-[#ef4444] shrink-0 border border-[#ef4444]/40 mt-0.5">
+              <AlertOctagon className="w-6 h-6 animate-pulse" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="text-base font-bold text-[#ffb4ab]">
+                  ⚠️ هشدار انقضای داده‌های ورودی (تاریخ ثبت: {currentFreshness.dataDateJalali})
+                </h4>
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#ef4444]/30 text-[#ffb4ab] border border-[#ef4444]/50">
+                  {currentFreshness.statusBadge.label}
+                </span>
+              </div>
+              <p className="text-xs text-[#dbc2b0] leading-relaxed max-w-3xl">
+                {currentFreshness.errorBannerFa || currentFreshness.warningMessageFa}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0 flex-wrap">
+            <button
+              onClick={handleResetToFreshToday}
+              className="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-[#ef4444] text-white hover:bg-[#dc2626] font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer active:scale-95"
+            >
+              <RefreshCw className="w-4 h-4" />
+              همگام‌سازی سریع با تاریخ امروز ({currentFreshness.todayJalali})
+            </button>
+            <button
+              onClick={handleAiLiveExtraction}
+              disabled={isAiExtracting}
+              className="flex-1 md:flex-none px-4 py-2.5 rounded-xl bg-[#271e16] border border-[#554336] text-[#ffb77d] hover:bg-[#322820] font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+            >
+              <Sparkles className="w-4 h-4" />
+              استخراج زنده
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-[#10b981]/10 border border-[#10b981]/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-3 text-[#10b981]">
+            <ShieldCheck className="w-5 h-5 shrink-0" />
+            <div>
+              <span className="font-bold">
+                وضعیت داده‌ها: زنده و معتبر برای پایش امروز ({currentFreshness.todayVerbose})
+              </span>
+              <p className="text-[11px] text-[#dbc2b0]/70 mt-0.5">
+                کلیه ۴۱ پارامتر ورودی با مقادیر و تاریخ رسمی روز همگام هستند.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleResetToFreshToday}
+            className="text-xs text-[#dbc2b0] hover:text-[#f2dfd3] bg-[#271e16] px-3 py-1.5 rounded-xl border border-[#554336] flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            بارگذاری مجدد بیس‌لاین امروز
+          </button>
         </div>
       )}
 

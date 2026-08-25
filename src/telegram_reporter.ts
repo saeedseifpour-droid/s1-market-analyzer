@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { getLiveJalaliDetails } from './utils/dateHelper';
+import { checkDataFreshness } from './utils/s1DataEngine';
 import {
   initialMarketScores,
   initialSignal,
@@ -150,6 +151,7 @@ export function formatFull13Report(payload: TelegramReportPayload, aiAnalysisTex
   const channelTag = process.env.TELEGRAM_CHAT_ID || initialTelegramConfig.channelId;
   const analysis = aiAnalysisText || signal.summaryText;
   const d = daily13Sections;
+  const freshness = checkDataFreshness(d?.metadata?.jalaliDate || signal.lastUpdatedJalali);
 
   const totalPortfolioValue = assets.reduce((acc, h) => acc + h.allocatedValueToman, 0);
   const totalProfitLossToman = totalPortfolioValue - 1000000000;
@@ -186,9 +188,13 @@ export function formatFull13Report(payload: TelegramReportPayload, aiAnalysisTex
   const tseFlowVal = d?.section4_bourse?.realMoneyFlow || getMetric('tse-real-money-flow', '+۸۹۰ میلیارد تومان');
   const tsePowerVal = d?.section4_bourse?.buyerPower || getMetric('tse-per-capita-power', '۱.۸۲');
 
+  const freshnessBanner = freshness.isStale
+    ? `⚠️ **هشدار انقضای داده:** داده‌های ثبت‌شده منقضی است (${freshness.dataDateJalali}) • عدم تصمیم‌گیری بر پایه داده‌های قدیمی\n`
+    : `✅ **وضعیت داده‌ها:** 🟢 زنده و تاییدشده امروز (${freshness.todayJalali})\n`;
+
   return `📋 **گزارش رسمی ۱۳ گانه سیستم مدیریت سرمایه و ریسک S1 (نسخه ۱.۳)**
 ⏰ پایش روزانه: ساعت ۱۷:۰۰ الی ۱۸:۰۰ • تاریخ: ${signal.lastUpdatedJalali}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${freshnessBanner}━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ۱️⃣ **مشخصات گزارش:** نسخه S1 Engine v1.3 • کیفیت داده: ${signal.dataQualityScore}/${signal.totalMetricsCount || inputs?.length || 41} شاخص زنده • منابع: TSETMC, TGJU, CoinGlass, TradingView, CBI
 
 ۲️⃣ **بازارهای جهانی:** 
@@ -473,6 +479,11 @@ export function formatStandardDailyInputTemplate(payload: TelegramReportPayload)
   const flowLev = s13?.flowLeveragedFunds || '+۱۸۵ میلیارد تومان';
   const flowCrypto = s13?.flowCrypto || etfFlowAmount;
 
+  const freshness = checkDataFreshness(jalaliDate);
+  const freshnessStatusLine = freshness.isStale
+    ? `وضعیت داده‌ها: 🔴 منقضی (داده‌های پایش متعلق به ${freshness.dataDateJalali} است - نیاز به به‌روزرسانی)`
+    : `وضعیت داده‌ها: 🟢 تاییدشده و زنده امروز (${freshness.todayJalali})`;
+
   return `══════════════════════════════════════════════════════════════
 S1 VERSION 1.3
 DAILY INPUT
@@ -481,6 +492,7 @@ DAILY INPUT
 تاریخ: ${jalaliDate}
 معادل میلادی: ${miladiDate}
 روز هفته: ${dayName}
+${freshnessStatusLine}
 
 ==============================================================
 ۱) اقتصاد کلان ایران
