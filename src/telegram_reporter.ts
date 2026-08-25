@@ -1,6 +1,8 @@
 import { GoogleGenAI } from '@google/genai';
-import { getLiveJalaliDetails } from './utils/dateHelper';
+import { getLiveJalaliDetails, getTehranTimeString, getLiveJalaliDateString } from './utils/dateHelper';
 import { checkDataFreshness } from './utils/s1DataEngine';
+import { runS1ValidationCore, getDefault13SectionsData } from './utils/s1ValidationCore';
+import { recalculateS1ScoresFromInputs } from './utils/marketDataLive';
 import {
   initialMarketScores,
   initialSignal,
@@ -886,33 +888,238 @@ export async function sendDualTelegramPipeline(
 }
 
 /**
+ * Dynamically extract and build live S1 data payload using direct REST APIs,
+ * Gemini Search Grounding (if available), and the mathematical S1 Validation Core.
+ */
+export async function buildLiveTelegramPayload(geminiApiKey?: string): Promise<TelegramReportPayload> {
+  const dateDetails = getLiveJalaliDetails(0);
+  const timeNow = getTehranTimeString(true);
+  const key = geminiApiKey || process.env.GEMINI_API_KEY;
+
+  console.log(`📅 Preparing live S1 data for: ${dateDetails.verbose} (${dateDetails.jalaliStandard})`);
+
+  let liveExtractedData: Record<string, any> = {};
+
+  // 1. Direct REST APIs for Crypto
+  try {
+    const cryptoRes = await fetch(
+      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true',
+      { signal: AbortSignal.timeout(4000) }
+    );
+    if (cryptoRes.ok) {
+      const cryptoJson = await cryptoRes.json();
+      if (cryptoJson?.bitcoin?.usd) {
+        liveExtractedData.btcPriceUsd = Math.round(cryptoJson.bitcoin.usd).toLocaleString('en-US');
+        if (cryptoJson.bitcoin.usd_24h_change !== undefined) {
+          const chg = cryptoJson.bitcoin.usd_24h_change;
+          liveExtractedData.btcChangePct = `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`;
+        }
+      }
+      if (cryptoJson?.ethereum?.usd) {
+        liveExtractedData.ethPriceUsd = Math.round(cryptoJson.ethereum.usd).toLocaleString('en-US');
+        if (cryptoJson.ethereum.usd_24h_change !== undefined) {
+          const chg = cryptoJson.ethereum.usd_24h_change;
+          liveExtractedData.ethChangePct = `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`;
+        }
+      }
+    }
+  } catch (e) {
+    // Try Binance
+    try {
+      const btcRes = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT', {
+        signal: AbortSignal.timeout(3000),
+      });
+      if (btcRes.ok) {
+        const btcData = await btcRes.json();
+        if (btcData?.lastPrice) {
+          liveExtractedData.btcPriceUsd = Math.round(parseFloat(btcData.lastPrice)).toLocaleString('en-US');
+          const chg = parseFloat(btcData.priceChangePercent);
+          liveExtractedData.btcChangePct = `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`;
+        }
+      }
+    } catch (binanceErr) {
+      // ignore
+    }
+  }
+
+  // Fear & Greed Index
+  try {
+    const fngRes = await fetch('https://api.alternative.me/fng/?limit=1', { signal: AbortSignal.timeout(3000) });
+    if (fngRes.ok) {
+      const fngJson = await fngRes.json();
+      if (fngJson?.data?.[0]?.value) {
+        liveExtractedData.cryptoFearGreed = fngJson.data[0].value;
+      }
+    }
+  } catch (fngErr) {
+    // ignore
+  }
+
+  // 2. Gemini Search Grounding for Live Iranian & Global Markets if API key available
+  if (key) {
+    try {
+      console.log('🌐 Fetching live market prices via Google Search Grounding...');
+      const ai = new GoogleGenAI({ apiKey: key });
+      const prompt = `شما تحلیل‌گر داده‌های مالی سیستم S1 هستید.
+تاریخ روز: ${dateDetails.verbose} (${dateDetails.miladiDate}).
+با ابزار Google Search آخرین نرخ‌های روز را از مراجع رسمی (tgju.org، بون‌بست، اتحادیه طلا و tsetmc) استخراج کنید:
+۱. نرخ اسکناس دلار آزاد تهران به تومان
+۲. نرخ تتر به تومان
+۳. قیمت هر گرم طلای ۱۸ عیار و سکه امامی طرح جدید به تومان
+۴. قیمت انس جهانی طلا (XAU/USD)
+۵. شاخص کل و ارزش معاملات خرد بورس تهران
+
+خروجی را صرفاً در قالب یک شیء JSON با کلیدهای زیر بنویسید (بدون هرگونه کد یا توضیح اضافی):
+{
+  "usdFreeToman": "قیمت دلار آزاد مثلا 202500",
+  "usdYesterday": "قیمت دیروز دلار",
+  "usdChangePct": "درصد تغییر دلار",
+  "usdtToman": "قیمت تتر",
+  "usdtYesterday": "قیمت دیروز تتر",
+  "usdtChangePct": "درصد تغییر تتر",
+  "goldOunceUsd": "قیمت انس طلا به دلار مثلا 4615",
+  "ounceYesterday": "قیمت انس دیروز",
+  "ounceChangePct": "درصد تغییر انس",
+  "gold18kGramToman": "قیمت هر گرم طلای ۱۸ عیار مثلا 22020000",
+  "gold18kYesterday": "قیمت دیروز طلای ۱۸ عیار",
+  "gold18kChangePct": "درصد تغییر طلای ۱۸ عیار",
+  "goldCoinEmamiToman": "قیمت سکه تمام طرح جدید امامی مثلا 221960000",
+  "sekeYesterday": "قیمت دیروز سکه امامی",
+  "sekeChangePct": "درصد تغییر سکه امامی",
+  "coinBubblePct": "درصد حباب سکه",
+  "btcPriceUsd": "قیمت بیت‌کوین به دلار",
+  "tseIndex": "شاخص کل بورس تهران",
+  "tseIndexChangePct": "درصد تغییر شاخص کل",
+  "tseEqualWeight": "شاخص هم‌وزن",
+  "tseRetailVolumeBillionToman": "ارزش معاملات خرد به میلیارد تومان",
+  "tseRealMoneyFlowBillionToman": "خالص ورود پول حقیقی به میلیارد تومان",
+  "marketSummaryFa": "خلاصه کوتاه و رسمی وضعیت امروز بازارها"
+}`;
+
+      const geminiRes = await ai.models.generateContent({
+        model: 'gemini-3.7-flash',
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+          temperature: 0.1,
+        },
+      });
+
+      const responseText = geminiRes.text || '';
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        liveExtractedData = { ...liveExtractedData, ...parsed };
+        console.log('✅ Google Search Grounding successfully extracted live values.');
+      }
+    } catch (searchErr) {
+      console.warn('⚠️ Gemini live search failed or rate-limited; proceeding with calibrated baseline & live crypto:', searchErr);
+    }
+  }
+
+  // 3. Mathematical Validation & Core Calibration
+  const base13 = getDefault13SectionsData();
+  const validationResult = runS1ValidationCore(liveExtractedData, initialDailyInputs, base13);
+
+  // 4. Recalculate Scores
+  const { marketScores, compositeScore } = recalculateS1ScoresFromInputs(
+    validationResult.validatedMetrics,
+    initialMarketScores
+  );
+
+  let actionTitle = 'خرید پله‌ای مجاز است';
+  let summaryText = `معاملات روز ${dateDetails.verbose} با ثبات نسبی در بازار ارز و ورود جریان نقدینگی خرد به صندوق‌های طلا و درآمد ثابت همراه شد. شرایط برای انباشت تدریجی دارایی‌های کم‌ریسک فراهم است.`;
+
+  if (compositeScore >= 85) {
+    actionTitle = 'ورود پرقدرت و تهاجمی';
+    summaryText = `جریان نقدینگی در بازارهای طلا و سهام صعودی است. خرید در قالب پله‌های تا ۲۰ درصدی به صندوق‌های منتخب مجاز است.`;
+  } else if (compositeScore < 60) {
+    actionTitle = 'تثبیت سود و افزایش نقدینگی';
+    summaryText = `افزایش نااطمینانی‌های سیستماتیک و اصلاح شاخص‌ها. تخصیص حداکثری به صندوق‌های درآمد ثابت توصیه می‌گردد.`;
+  }
+
+  const updatedSignal: SystemS1Signal = {
+    ...initialSignal,
+    overallScore: compositeScore,
+    actionTitle,
+    summaryText: liveExtractedData.marketSummaryFa || summaryText,
+    lastUpdatedJalali: `${dateDetails.jalaliStandard} ${timeNow}:00`,
+  };
+
+  return {
+    signal: updatedSignal,
+    marketScores,
+    inputs: validationResult.validatedMetrics,
+    assets: initialPortfolioAssets,
+    trades: initialPortfolioTrades,
+    sri: initialSRI,
+    daily13Sections: validationResult.validated13Sections,
+    auditReport: validationResult.auditReport,
+  };
+}
+
+/**
  * Main execution handler to process data, generate Gemini analysis, and broadcast to Telegram
  */
 export async function executeDailyReport(options?: {
-  reportType?: 'full13' | 'quick' | 'both';
+  reportType?: 'dual' | 'full13' | 'quick' | 'both' | 'dailyInput';
   botToken?: string;
   chatId?: string;
   geminiApiKey?: string;
+  customPayload?: TelegramReportPayload;
 }): Promise<{ success: boolean; results: any }> {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('🚀 SYSTEM S1 ENGINE v1.3 - DAILY TELEGRAM REPORTER');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-  const payload: TelegramReportPayload = {
-    signal: initialSignal,
-    marketScores: initialMarketScores,
-    inputs: initialDailyInputs,
-    assets: initialPortfolioAssets,
-    trades: initialPortfolioTrades,
-    sri: initialSRI,
-  };
+  const geminiApiKey = options?.geminiApiKey || process.env.GEMINI_API_KEY;
+  const botToken = options?.botToken || process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = options?.chatId || process.env.TELEGRAM_CHAT_ID || initialTelegramConfig.channelId;
 
-  console.log('🧠 Invoking Gemini 3.7 Flash for Executive Summary...');
-  const aiSummary = await generateGeminiExecutiveAnalysis(payload, options?.geminiApiKey);
-  console.log('✅ AI Summary Generated Successfully.');
+  if (!botToken || !chatId) {
+    console.error('❌ Missing Telegram credentials (TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID)');
+    return { success: false, results: [{ error: 'Missing Telegram credentials' }] };
+  }
 
-  const reportType = options?.reportType || 'full13';
+  // Prepare Live Payload
+  const payload = options?.customPayload || (await buildLiveTelegramPayload(geminiApiKey));
+
+  console.log(`📊 Composite S1 Score: ${payload.signal.overallScore}/100 | Action: ${payload.signal.actionTitle}`);
+  console.log('🧠 Invoking Gemini for Executive Summary...');
+  const aiSummary = await generateGeminiExecutiveAnalysis(payload, geminiApiKey);
+  console.log('✅ AI Summary Generated.');
+
+  const reportType = options?.reportType || 'dual';
+
+  // Dual Pipeline (Standard 2-message official broadcast)
+  if (reportType === 'dual') {
+    console.log('📤 Executing Official Dual Pipeline (Step 1: Daily Input -> Step 2: Scoring Decision)...');
+    const dualRes = await sendDualTelegramPipeline(
+      payload,
+      botToken,
+      chatId,
+      aiSummary,
+      (step, status, err) => {
+        console.log(`   [Step ${step}] ${status.toUpperCase()}${err ? ` - ${err}` : ''}`);
+      }
+    );
+    return {
+      success: dualRes.success,
+      results: [
+        { type: 'پیام اول: فرم ثبت داده‌ها (دیلی اینپوت)', ...dualRes.step1 },
+        { type: 'پیام دوم: گزارش تصمیم و تخصیص دارایی S1', ...dualRes.step2 },
+      ],
+    };
+  }
+
   const reportsToSend: { type: string; text: string }[] = [];
+
+  if (reportType === 'dailyInput') {
+    reportsToSend.push({
+      type: 'فرم ثبت داده‌های ورودی ۱۳ گانه (Daily Input)',
+      text: formatStandardDailyInputTemplate(payload),
+    });
+  }
 
   if (reportType === 'full13' || reportType === 'both') {
     reportsToSend.push({
@@ -931,7 +1138,7 @@ export async function executeDailyReport(options?: {
   const results: any[] = [];
   for (const report of reportsToSend) {
     console.log(`📤 Sending ${report.type} to Telegram...`);
-    const res = await sendTelegramMessage(report.text, options?.botToken, options?.chatId);
+    const res = await sendTelegramMessage(report.text, botToken, chatId);
     results.push({ type: report.type, ...res });
     if (res.success) {
       console.log(`✅ ${report.type} successfully delivered!`);
