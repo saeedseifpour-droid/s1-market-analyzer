@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ActiveTab } from '../types';
-import { Search, Bell, User, Menu, X, CheckCircle, TrendingUp, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Search, Bell, User, Menu, X, CheckCircle, TrendingUp, AlertTriangle, RefreshCw, Pin, ChevronDown } from 'lucide-react';
 
 interface HeaderProps {
   activeTab: ActiveTab;
@@ -16,6 +16,12 @@ export const Header: React.FC<HeaderProps> = ({
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
+  
+  // Hover & Slide behavior state
+  const [isHovered, setIsHovered] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -59,11 +65,64 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  const handleMouseEnter = () => {
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+    setIsHovered(true);
+  };
+
+  const handleMouseLeave = () => {
+    // If notifications dropdown or modal is open, or user pinned it, don't hide immediately
+    if (showNotifications || showSearchModal || isPinned) {
+      return;
+    }
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+    }
+    hideTimeoutRef.current = setTimeout(() => {
+      setIsHovered(false);
+    }, 350);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const isVisible = isHovered || isPinned || showNotifications || showSearchModal;
+
   return (
     <>
+      {/* 1. Top Invisible Trigger Zone & Minimal Indicator Strip (Always accessible at the very top) */}
+      <div
+        id="header-hover-trigger-zone"
+        onMouseEnter={handleMouseEnter}
+        className="fixed top-0 right-0 lg:right-72 left-0 h-4 z-40 cursor-pointer group"
+      >
+        {/* Subtle glowing pill indicator when header is hidden */}
+        {!isVisible && (
+          <div className="absolute top-0.5 left-1/2 -translate-x-1/2 bg-[#271e16]/90 border border-[#554336] hover:border-[#ffb77d] rounded-b-xl px-4 py-0.5 text-[10px] text-[#dbc2b0] flex items-center gap-1.5 shadow-md transition-all duration-300 group-hover:py-1 group-hover:text-[#ffb77d]">
+            <ChevronDown className="w-3 h-3 animate-bounce" />
+            <span>نوار ابزار و کنترل سیستم S1 (هاور کنید)</span>
+          </div>
+        )}
+      </div>
+
+      {/* 2. Floating Dropdown Header with Smooth Slide Animation */}
       <header
         id="app-header"
-        className="fixed top-0 right-0 lg:right-72 left-0 h-16 bg-[#271e16]/85 backdrop-blur-xl border-b border-[#554336] z-40 flex items-center justify-between px-4 sm:px-6"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className={`fixed top-0 right-0 lg:right-72 left-0 h-16 bg-[#271e16]/95 backdrop-blur-xl border-b border-[#554336] z-40 flex items-center justify-between px-4 sm:px-6 shadow-2xl transition-all duration-300 ease-out ${
+          isVisible
+            ? 'translate-y-0 opacity-100 pointer-events-auto'
+            : '-translate-y-full opacity-0 pointer-events-none'
+        }`}
       >
         {/* Left Side (in RTL, this is the right section) */}
         <div className="flex items-center gap-3">
@@ -83,6 +142,20 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Action Controls & Profile */}
         <div className="flex items-center gap-2 sm:gap-4">
+          {/* Pin/Unpin Toggle Button */}
+          <button
+            id="header-pin-btn"
+            onClick={() => setIsPinned(!isPinned)}
+            className={`p-2 rounded-lg transition-colors relative ${
+              isPinned
+                ? 'text-[#ffb77d] bg-[#3e332b] border border-[#ffb77d]/40'
+                : 'text-[#dbc2b0]/70 hover:text-[#ffb77d] hover:bg-[#322820]'
+            }`}
+            title={isPinned ? 'حالت شناور خودکار (ثابت شده است)' : 'قفل کردن نوار در بالای صفحه'}
+          >
+            <Pin className={`w-4 h-4 ${isPinned ? 'fill-[#ffb77d]' : ''}`} />
+          </button>
+
           {/* Quick Search Button */}
           <button
             id="header-search-btn"

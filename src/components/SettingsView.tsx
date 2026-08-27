@@ -191,18 +191,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <Send className="w-5 h-5 text-[#ffb77d]" />
                 اتصال و ارسال خودکار به تلگرام
               </h3>
-              <span className="text-[11px] text-[#10b981] bg-[#10b981]/15 px-2 py-0.5 rounded-full font-bold">
-                ربات متصل
+              <span
+                className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${
+                  config.botToken
+                    ? 'text-[#10b981] bg-[#10b981]/15 border-[#10b981]/30'
+                    : 'text-[#ffb77d] bg-[#f59e0b]/15 border-[#f59e0b]/30'
+                }`}
+              >
+                {config.botToken ? 'ربات متصل' : 'نیاز به توکن @BotFather'}
               </span>
             </div>
 
             <div className="space-y-3.5 text-xs">
               <div>
-                <label className="block text-[#dbc2b0] mb-1">نام کانال / گروه تلگرام:</label>
+                <label className="block text-[#dbc2b0] mb-1">شناسه کانال / گروه تلگرام:</label>
                 <input
                   type="text"
                   value={config.channelId}
                   onChange={(e) => setConfig({ ...config, channelId: e.target.value })}
+                  placeholder="@SystemS1_Signals یا 123456789-"
                   className="w-full bg-[#1a120b] border border-[#554336] rounded-xl px-3 py-2 text-[#f2dfd3] font-mono-num outline-none focus:border-[#ffb77d]"
                   dir="ltr"
                 />
@@ -214,9 +221,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   type="password"
                   value={config.botToken}
                   onChange={(e) => setConfig({ ...config, botToken: e.target.value })}
+                  placeholder="7123456789:AAH..."
                   className="w-full bg-[#1a120b] border border-[#554336] rounded-xl px-3 py-2 text-[#f2dfd3] font-mono-num outline-none focus:border-[#ffb77d]"
                   dir="ltr"
                 />
+                <p className="text-[10px] text-[#dbc2b0]/70 mt-1">
+                  توکن دریافتی از ربات <span className="text-[#96ccff] font-mono">@BotFather</span> در تلگرام
+                </p>
               </div>
 
               <div className="flex items-center justify-between pt-2">

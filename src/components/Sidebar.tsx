@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActiveTab } from '../types';
+import { ActiveTab, PortfolioSummary } from '../types';
 import {
   LayoutDashboard,
   PieChart,
@@ -17,6 +17,7 @@ interface SidebarProps {
   setActiveTab: (tab: ActiveTab) => void;
   isOpenMobile: boolean;
   setIsOpenMobile: (open: boolean) => void;
+  portfolioSummary?: PortfolioSummary;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -24,7 +25,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setActiveTab,
   isOpenMobile,
   setIsOpenMobile,
+  portfolioSummary,
 }) => {
+  const getPortfolioBadge = () => {
+    if (!portfolioSummary) return '۱ همت';
+    if (portfolioSummary.totalPnlPct > 0) return `+${portfolioSummary.totalPnlPct.toFixed(1)}٪`;
+    if (portfolioSummary.totalPnlPct < 0) return `${portfolioSummary.totalPnlPct.toFixed(1)}٪`;
+    return '۱ همت (نقد)';
+  };
+
   const navItems = [
     {
       id: 'dashboard' as ActiveTab,
@@ -36,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'portfolio' as ActiveTab,
       label: 'پورتفوی ۱ میلیاردی',
       icon: PieChart,
-      badge: '+۱۴.۸٪',
+      badge: getPortfolioBadge(),
     },
     {
       id: 'news_risks' as ActiveTab,

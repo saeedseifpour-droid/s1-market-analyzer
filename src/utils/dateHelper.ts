@@ -113,7 +113,7 @@ export function getLiveJalaliDetails(offsetDays: number = 0): JalaliDateDetails 
     jalaliFa,
     verbose,
     miladiDate,
-    reportingWindow: '۱۷:۰۰ الی ۱۸:۰۰ عصر',
+    reportingWindow: 'پایش اتوماتیک ساعت ۲۰:۰۰ / پایش دستی زنده',
   };
 }
 

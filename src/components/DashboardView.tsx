@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { MarketScoreItem, SystemS1Signal } from '../types';
+import {
+  MarketScoreItem,
+  SystemS1Signal,
+  PortfolioSummary,
+  PortfolioAssetItem,
+  PortfolioPendingOrder,
+  SystemicRiskItem,
+} from '../types';
 import { DataFreshnessStatus } from '../utils/s1DataEngine';
 import {
   Send,
@@ -23,13 +30,22 @@ import {
   Check,
   Scale,
   RefreshCw,
-  AlertOctagon
+  AlertOctagon,
+  ChevronDown,
+  ChevronUp,
+  Layers,
+  ArrowDownRight,
 } from 'lucide-react';
 
 interface DashboardViewProps {
   signal: SystemS1Signal;
   marketScores: MarketScoreItem[];
   freshnessStatus?: DataFreshnessStatus;
+  lastManualRunTime?: string;
+  portfolioSummary?: PortfolioSummary;
+  portfolioAssets?: PortfolioAssetItem[];
+  portfolioPendingOrders?: PortfolioPendingOrder[];
+  systemicRisks?: SystemicRiskItem[];
   onOpenTelegramModal: () => void;
   onOpenRunNowModal: () => void;
   onOpenDailyReportModal?: () => void;
@@ -44,6 +60,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   signal,
   marketScores,
   freshnessStatus,
+  lastManualRunTime,
+  portfolioSummary,
+  portfolioAssets,
+  portfolioPendingOrders,
+  systemicRisks,
   onOpenTelegramModal,
   onOpenRunNowModal,
   onOpenDailyReportModal,
@@ -54,6 +75,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigateToRulebook,
 }) => {
   const [selectedWeightMarket, setSelectedWeightMarket] = useState<MarketScoreItem | null>(null);
+  const [expandedConfirmations, setExpandedConfirmations] = useState<Record<string, boolean>>({
+    bourse: true, // Expanded by default so the user sees the 3 bourse confirmations immediately
+    gold: false,
+    btc: false,
+    usdt: false,
+  });
+
+  const toggleConfirmation = (marketId: string) => {
+    setExpandedConfirmations((prev) => ({
+      ...prev,
+      [marketId]: !prev[marketId],
+    }));
+  };
 
   const getMarketIcon = (id: string) => {
     switch (id) {
@@ -98,6 +132,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const isVetoActive = signal.confidenceScore < 6;
 
+  // Format Persian currency
+  const formatToman = (val?: number) => {
+    if (val === undefined || val === null) return '۱,۰۰۰,۰۰۰,۰۰۰';
+    return Number(val).toLocaleString('fa-IR');
+  };
+
+  // Live portfolio summary stats
+  const currentVal = portfolioSummary?.currentValueToman ?? 1_000_000_000;
+  const totalPnlPct = portfolioSummary?.totalPnlPct ?? 0;
+  const maxDd = portfolioSummary?.maxDrawdownPct ?? 0;
+  const pendingCount = portfolioPendingOrders?.filter(o => o.status === 'pending').length ?? (portfolioSummary?.pendingOrdersCount ?? 0);
+
+  // Asset breakdown summary for live display
+  const getPortfolioCompositionText = () => {
+    if (!portfolioAssets || portfolioAssets.length === 0) {
+      return '۱۰۰٪ پارک نقدینگی در صندوق افران (سود ۳۱.۵٪ روزشمار) • آماده ورود پله‌ای';
+    }
+    const afran = portfolioAssets.find(a => a.id === 'asset-afran');
+    if (afran && afran.weightPct >= 99) {
+      return '۱۰۰٪ پارک نقدینگی در صندوق افران (سود ۳۱.۵٪ روزشمار) • اصل سرمایه کاملاً نقد و امن';
+    }
+    const activeAllocations = portfolioAssets
+      .filter(a => a.weightPct > 0)
+      .map(a => `${a.name.split(' ')[1] || a.name}: ${a.weightPct}٪`)
+      .join(' • ');
+    return activeAllocations || '۱۰۰٪ پارک نقدینگی در صندوق افران';
+  };
+
   return (
     <div className="flex flex-col w-full gap-5 animate-fade-in">
       {/* 1. Header Engine & Action Bar */}
@@ -115,7 +177,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap text-xs text-[#dbc2b0]/80">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap text-xs text-[#dbc2b0]/80">
             <div className="flex items-center gap-1.5">
               <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10b981] opacity-75"></span>
@@ -125,10 +187,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 LIVE ENGINE
               </span>
             </div>
-            <span>•</span>
-            <div className="flex items-center gap-1 font-mono-num">
-              <Clock className="w-3.5 h-3.5 text-[#dbc2b0]/70" />
-              <span>پایش ساعت ۱۷:۰۰ تا ۱۸:۰۰ • {signal.lastUpdatedJalali}</span>
+
+            <span className="text-[#554336]">•</span>
+
+            {/* پایش اتوماتیک ساعت ۲۰ */}
+            <div className="flex items-center gap-1.5 bg-[#1a120b] px-2.5 py-1 rounded-lg border border-[#554336]/60 font-mono-num text-[11px] sm:text-xs">
+              <Clock className="w-3.5 h-3.5 text-[#96ccff]" />
+              <span className="text-[#dbc2b0]/90">پایش اتوماتیک:</span>
+              <span className="font-bold text-[#96ccff]">ساعت ۲۰:۰۰</span>
+            </div>
+
+            <span className="text-[#554336]">•</span>
+
+            {/* پایش دستی / آخرین پایش */}
+            <div className="flex items-center gap-1.5 bg-[#1a120b] px-2.5 py-1 rounded-lg border border-[#ffb77d]/30 font-mono-num text-[11px] sm:text-xs">
+              <Play className="w-3 h-3 text-[#ffb77d] fill-[#ffb77d]" />
+              <span className="text-[#dbc2b0]/90">آخرین پایش دستی:</span>
+              <span className="font-bold text-[#ffb77d]">
+                {lastManualRunTime || signal.lastUpdatedJalali}
+              </span>
             </div>
           </div>
         </div>
@@ -361,30 +438,48 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* 3. Quick Navigation Widgets for Portfolio & Systematic Risks */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Portfolio Quick Card */}
+        {/* Live Paper Portfolio Quick Card */}
         <div
           onClick={onNavigateToPortfolio}
-          className="bg-[#271e16] border border-[#ffb77d]/30 hover:border-[#ffb77d] rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-md cursor-pointer transition-all hover:bg-[#322820] group"
+          className="bg-[#271e16] border border-[#ffb77d]/40 hover:border-[#ffb77d] rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-md cursor-pointer transition-all hover:bg-[#322820] group relative overflow-hidden"
         >
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 rounded-xl bg-[#ffb77d]/15 text-[#ffb77d] border border-[#ffb77d]/30">
+          <div className="flex items-center gap-3.5 z-10 min-w-0">
+            <div className="p-3 rounded-xl bg-[#ffb77d]/15 text-[#ffb77d] border border-[#ffb77d]/30 shrink-0">
               <PieChart className="w-6 h-6" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="text-sm font-bold text-[#f2dfd3] group-hover:text-[#ffb77d] transition-colors">
-                  پورتفوی کاغذی ۱ میلیارد تومانی
+                  پورتفوی کاغذی ۱ میلیارد تومانی S1
                 </h4>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#10b981]/20 text-[#10b981] font-bold font-mono-num">
-                  +۱۴.۸۶٪ سود
-                </span>
+                {totalPnlPct > 0 ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/30 font-bold font-mono-num">
+                    +{totalPnlPct.toFixed(2)}٪ سود
+                  </span>
+                ) : totalPnlPct < 0 ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#ef4444]/20 text-[#ef4444] border border-[#ef4444]/30 font-bold font-mono-num">
+                    {totalPnlPct.toFixed(2)}٪ زیان
+                  </span>
+                ) : (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#96ccff]/15 text-[#96ccff] border border-[#96ccff]/30 font-bold font-mono-num">
+                    ۰.۰۰٪ (وضعیت پایه / ریست‌شده)
+                  </span>
+                )}
+                {pendingCount > 0 && (
+                  <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#f59e0b]/20 text-[#f59e0b] border border-[#f59e0b]/30 font-bold">
+                    {pendingCount} سفارش در انتظار
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-[#dbc2b0] mt-0.5">
-                سقف دراودان: -۴.۱۸٪ (امن، زیر سقف ۱۵٪) • عیار، افران، توان
+              <p className="text-xs text-[#dbc2b0] mt-1 font-mono-num truncate">
+                ارزش روز: <strong className="text-[#ffb77d] font-bold">{formatToman(currentVal)} تومان</strong> • سقف دراودان: {maxDd === 0 ? '۰.۰۰٪ (امن)' : `-${Math.abs(maxDd).toFixed(2)}٪`}
+              </p>
+              <p className="text-[11px] text-[#dbc2b0]/70 mt-0.5 truncate">
+                {getPortfolioCompositionText()}
               </p>
             </div>
           </div>
-          <div className="p-2 rounded-xl bg-[#1a120b] text-[#ffb77d] group-hover:translate-x-[-3px] transition-transform">
+          <div className="p-2 rounded-xl bg-[#1a120b] text-[#ffb77d] group-hover:translate-x-[-3px] transition-transform shrink-0 mr-2">
             <ArrowUpRight className="w-5 h-5" />
           </div>
         </div>
@@ -394,25 +489,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           onClick={onNavigateToNewsRisks}
           className="bg-[#271e16] border border-[#96ccff]/30 hover:border-[#96ccff] rounded-2xl p-4 sm:p-5 flex items-center justify-between shadow-md cursor-pointer transition-all hover:bg-[#322820] group"
         >
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 rounded-xl bg-[#96ccff]/15 text-[#96ccff] border border-[#96ccff]/30">
+          <div className="flex items-center gap-3.5 z-10 min-w-0">
+            <div className="p-3 rounded-xl bg-[#96ccff]/15 text-[#96ccff] border border-[#96ccff]/30 shrink-0">
               <ShieldAlert className="w-6 h-6" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="text-sm font-bold text-[#f2dfd3] group-hover:text-[#96ccff] transition-colors">
-                  شاخص ریسک سیستم (SRI) و اخبار
+                  شاخص ریسک سیستماتیک (SRI) و اخبار
                 </h4>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#96ccff]/20 text-[#96ccff] font-bold font-mono-num">
                   SRI ۴.۴ (متوسط)
                 </span>
               </div>
-              <p className="text-xs text-[#dbc2b0] mt-0.5">
-                ماتریس ۵ گانه A-E • وضعیت اضطراری غیرفعال • اولویت نقدشوندگی آماده
+              <p className="text-xs text-[#dbc2b0] mt-1">
+                ماتریس ۵ گانه A-E • وضعیت اضطراری غیرفعال • لنگرگاه افران آماده
+              </p>
+              <p className="text-[11px] text-[#dbc2b0]/70 mt-0.5 truncate">
+                پایش لحظه‌ای خطرات منطقه‌ای، نرخ بهره بین‌بانکی و ثبات بازارها
               </p>
             </div>
           </div>
-          <div className="p-2 rounded-xl bg-[#1a120b] text-[#96ccff] group-hover:translate-x-[-3px] transition-transform">
+          <div className="p-2 rounded-xl bg-[#1a120b] text-[#96ccff] group-hover:translate-x-[-3px] transition-transform shrink-0 mr-2">
             <ArrowUpRight className="w-5 h-5" />
           </div>
         </div>
@@ -435,19 +533,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {marketScores.map((market) => {
             const traffic = getTrafficLightBadge(market.score);
             const isGreen = market.score >= 80;
             const isRed = market.score < 60;
-
             const strokeColor = isGreen ? '#10b981' : isRed ? '#ef4444' : '#f59e0b';
+            const isExpanded = expandedConfirmations[market.id] ?? false;
 
             return (
               <div
                 key={market.id}
                 id={`market-card-${market.id}`}
-                className="bg-[#271e16] border border-[#554336] rounded-2xl p-5 shadow-sm hover:-translate-y-1 hover:border-[#ffb77d]/50 hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
+                className="bg-[#271e16] border border-[#554336] rounded-2xl p-5 shadow-sm hover:border-[#ffb77d]/50 hover:shadow-xl transition-all duration-300 flex flex-col justify-between"
               >
                 <div>
                   {/* Card Title & Icon */}
@@ -499,12 +597,119 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         {market.sentiment}
                       </span>
                       {market.threeConfirmations && (
-                        <span className={`text-[10px] font-semibold mt-0.5 ${market.threeConfirmations.isConfirmed ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
-                          {market.threeConfirmations.isConfirmed ? '✓ ۳ تایید پاس شد' : '✗ ۳ تایید ناقص'}
+                        <span className={`text-[10px] font-bold mt-0.5 flex items-center gap-1 ${market.threeConfirmations.isConfirmed ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
+                          {market.threeConfirmations.isConfirmed ? (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              ۳ تایید مستقل پاس شد
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="w-3.5 h-3.5" />
+                              ۳ تایید ناقص
+                            </>
+                          )}
                         </span>
                       )}
                     </div>
                   </div>
+
+                  {/* S1 Triple Confirmation Detailed Box */}
+                  {market.threeConfirmations && (
+                    <div className="mb-3.5 p-3 rounded-xl bg-[#1d150e] border border-[#554336]/60 flex flex-col gap-2">
+                      <button
+                        onClick={() => toggleConfirmation(market.id)}
+                        className="flex items-center justify-between text-xs font-bold text-[#ffb77d] hover:text-[#f2dfd3] transition-colors w-full text-right"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-[#10b981]" />
+                          جزییات ۳ تاییدیه مستقل {market.name}
+                        </span>
+                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+
+                      {isExpanded && (
+                        <div className="flex flex-col gap-2.5 pt-2 border-t border-[#554336]/40 text-xs">
+                          {/* Criterion 1: Real Money Inflow with Daily Breakdown */}
+                          <div className={`p-2.5 rounded-lg border flex flex-col gap-1.5 ${market.threeConfirmations.criterion1.passed ? 'bg-[#10b981]/10 border-[#10b981]/30' : 'bg-[#ef4444]/10 border-[#ef4444]/30'}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-[#f2dfd3] flex items-center gap-1">
+                                {market.threeConfirmations.criterion1.passed ? (
+                                  <Check className="w-3.5 h-3.5 text-[#10b981]" />
+                                ) : (
+                                  <XCircle className="w-3.5 h-3.5 text-[#ef4444]" />
+                                )}
+                                تایید ۱: {market.threeConfirmations.criterion1.name}
+                              </span>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${market.threeConfirmations.criterion1.passed ? 'bg-[#10b981]/20 text-[#10b981]' : 'bg-[#ef4444]/20 text-[#ef4444]'}`}>
+                                {market.threeConfirmations.criterion1.passed ? 'پاس شد' : 'رد شد'}
+                              </span>
+                            </div>
+
+                            {/* Daily liquidity pills if present */}
+                            {market.threeConfirmations.criterion1.dailyFlows && (
+                              <div className="mt-1 flex flex-col gap-1 bg-[#1a120b] p-2 rounded border border-[#554336]/40">
+                                <span className="text-[10px] text-[#dbc2b0]/80 font-semibold">تفکیک ورود نقدینگی خرد در ۳ روز اخیر:</span>
+                                <div className="grid grid-cols-3 gap-1 text-[10px] font-mono-num text-center">
+                                  {market.threeConfirmations.criterion1.dailyFlows.map((flow, fIdx) => (
+                                    <div key={fIdx} className="bg-[#271e16] p-1 rounded border border-[#554336]/40 flex flex-col">
+                                      <span className="text-[#dbc2b0]/70 text-[9px]">{flow.day}</span>
+                                      <span className={`font-bold ${flow.status === 'positive' ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
+                                        {flow.amount}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            <p className="text-[10px] text-[#dbc2b0]/90 leading-relaxed">
+                              {market.threeConfirmations.criterion1.note}
+                            </p>
+                          </div>
+
+                          {/* Criterion 2: Retail Trade Value */}
+                          <div className={`p-2.5 rounded-lg border flex flex-col gap-1 ${market.threeConfirmations.criterion2.passed ? 'bg-[#10b981]/10 border-[#10b981]/30' : 'bg-[#ef4444]/10 border-[#ef4444]/30'}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-[#f2dfd3] flex items-center gap-1">
+                                {market.threeConfirmations.criterion2.passed ? (
+                                  <Check className="w-3.5 h-3.5 text-[#10b981]" />
+                                ) : (
+                                  <XCircle className="w-3.5 h-3.5 text-[#ef4444]" />
+                                )}
+                                تایید ۲: {market.threeConfirmations.criterion2.name}
+                              </span>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${market.threeConfirmations.criterion2.passed ? 'bg-[#10b981]/20 text-[#10b981]' : 'bg-[#ef4444]/20 text-[#ef4444]'}`}>
+                                {market.threeConfirmations.criterion2.passed ? 'پاس شد' : 'رد شد'}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-[#dbc2b0]/90 leading-relaxed font-mono-num">
+                              {market.threeConfirmations.criterion2.note}
+                            </p>
+                          </div>
+
+                          {/* Criterion 3: Buyer Power */}
+                          <div className={`p-2.5 rounded-lg border flex flex-col gap-1 ${market.threeConfirmations.criterion3.passed ? 'bg-[#10b981]/10 border-[#10b981]/30' : 'bg-[#ef4444]/10 border-[#ef4444]/30'}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-[#f2dfd3] flex items-center gap-1">
+                                {market.threeConfirmations.criterion3.passed ? (
+                                  <Check className="w-3.5 h-3.5 text-[#10b981]" />
+                                ) : (
+                                  <XCircle className="w-3.5 h-3.5 text-[#ef4444]" />
+                                )}
+                                تایید ۳: {market.threeConfirmations.criterion3.name}
+                              </span>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${market.threeConfirmations.criterion3.passed ? 'bg-[#10b981]/20 text-[#10b981]' : 'bg-[#ef4444]/20 text-[#ef4444]'}`}>
+                                {market.threeConfirmations.criterion3.passed ? 'پاس شد' : 'رد شد'}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-[#dbc2b0]/90 leading-relaxed font-mono-num">
+                              {market.threeConfirmations.criterion3.note}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Bullet Metrics */}
                   <ul className="flex flex-col gap-1.5 text-xs text-[#dbc2b0] border-t border-[#554336]/40 pt-3">
@@ -571,7 +776,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <h3 className="text-lg font-bold text-[#f2dfd3]">
                     فرمول ۱۰۰ امتیازی {selectedWeightMarket.name} (S1 v1.3)
                   </h3>
-                  <span className="text-xs text-[#dbc2b0]/80">
+                  <span className="text-xs text-[#dbc2b0]/80 font-mono-num">
                     امتیاز کسب‌شده: {selectedWeightMarket.score} از ۱۰۰
                   </span>
                 </div>
@@ -585,35 +790,69 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </button>
             </div>
 
-            {/* Three Confirmations Status Box */}
+            {/* Three Confirmations Status Box in Modal */}
             {selectedWeightMarket.threeConfirmations && (
-              <div className="p-4 rounded-xl bg-[#1a120b] border border-[#554336] flex flex-col gap-2.5">
-                <span className="text-xs font-bold text-[#ffb77d] flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4" />
-                  وضعیت قانون ۳ تایید مستقل (Triple Confirmation Rule)
-                </span>
+              <div className="p-4 rounded-xl bg-[#1a120b] border border-[#554336] flex flex-col gap-3">
+                <div>
+                  <span className="text-xs font-bold text-[#ffb77d] flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-[#10b981]" />
+                    {selectedWeightMarket.threeConfirmations.confirmationTitle || 'وضعیت قانون ۳ تایید مستقل (Triple Confirmation Rule)'}
+                  </span>
+                  {selectedWeightMarket.threeConfirmations.ruleSummary && (
+                    <p className="text-[11px] text-[#dbc2b0]/70 mt-1">
+                      {selectedWeightMarket.threeConfirmations.ruleSummary}
+                    </p>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                  <div className={`p-2 rounded-lg border ${selectedWeightMarket.threeConfirmations.criterion1.passed ? 'bg-[#10b981]/10 border-[#10b981]/30 text-[#10b981]' : 'bg-[#ef4444]/10 border-[#ef4444]/30 text-[#ef4444]'}`}>
-                    <div className="font-bold flex items-center gap-1">
-                      {selectedWeightMarket.threeConfirmations.criterion1.passed ? '✓' : '✗'} تایید ۱
+                  <div className={`p-3 rounded-lg border flex flex-col justify-between ${selectedWeightMarket.threeConfirmations.criterion1.passed ? 'bg-[#10b981]/10 border-[#10b981]/30 text-[#10b981]' : 'bg-[#ef4444]/10 border-[#ef4444]/30 text-[#ef4444]'}`}>
+                    <div>
+                      <div className="font-bold flex items-center gap-1">
+                        {selectedWeightMarket.threeConfirmations.criterion1.passed ? '✓' : '✗'} تایید ۱
+                      </div>
+                      <div className="text-[11px] text-[#f2dfd3] font-semibold mt-0.5">{selectedWeightMarket.threeConfirmations.criterion1.name}</div>
                     </div>
-                    <div className="text-[10px] text-[#dbc2b0] mt-0.5">{selectedWeightMarket.threeConfirmations.criterion1.name}</div>
+                    <div className="text-[10px] text-[#dbc2b0]/80 mt-1">{selectedWeightMarket.threeConfirmations.criterion1.note}</div>
                   </div>
 
-                  <div className={`p-2 rounded-lg border ${selectedWeightMarket.threeConfirmations.criterion2.passed ? 'bg-[#10b981]/10 border-[#10b981]/30 text-[#10b981]' : 'bg-[#ef4444]/10 border-[#ef4444]/30 text-[#ef4444]'}`}>
-                    <div className="font-bold flex items-center gap-1">
-                      {selectedWeightMarket.threeConfirmations.criterion2.passed ? '✓' : '✗'} تایید ۲
+                  <div className={`p-3 rounded-lg border flex flex-col justify-between ${selectedWeightMarket.threeConfirmations.criterion2.passed ? 'bg-[#10b981]/10 border-[#10b981]/30 text-[#10b981]' : 'bg-[#ef4444]/10 border-[#ef4444]/30 text-[#ef4444]'}`}>
+                    <div>
+                      <div className="font-bold flex items-center gap-1">
+                        {selectedWeightMarket.threeConfirmations.criterion2.passed ? '✓' : '✗'} تایید ۲
+                      </div>
+                      <div className="text-[11px] text-[#f2dfd3] font-semibold mt-0.5">{selectedWeightMarket.threeConfirmations.criterion2.name}</div>
                     </div>
-                    <div className="text-[10px] text-[#dbc2b0] mt-0.5">{selectedWeightMarket.threeConfirmations.criterion2.name}</div>
+                    <div className="text-[10px] text-[#dbc2b0]/80 mt-1">{selectedWeightMarket.threeConfirmations.criterion2.note}</div>
                   </div>
 
-                  <div className={`p-2 rounded-lg border ${selectedWeightMarket.threeConfirmations.criterion3.passed ? 'bg-[#10b981]/10 border-[#10b981]/30 text-[#10b981]' : 'bg-[#ef4444]/10 border-[#ef4444]/30 text-[#ef4444]'}`}>
-                    <div className="font-bold flex items-center gap-1">
-                      {selectedWeightMarket.threeConfirmations.criterion3.passed ? '✓' : '✗'} تایید ۳
+                  <div className={`p-3 rounded-lg border flex flex-col justify-between ${selectedWeightMarket.threeConfirmations.criterion3.passed ? 'bg-[#10b981]/10 border-[#10b981]/30 text-[#10b981]' : 'bg-[#ef4444]/10 border-[#ef4444]/30 text-[#ef4444]'}`}>
+                    <div>
+                      <div className="font-bold flex items-center gap-1">
+                        {selectedWeightMarket.threeConfirmations.criterion3.passed ? '✓' : '✗'} تایید ۳
+                      </div>
+                      <div className="text-[11px] text-[#f2dfd3] font-semibold mt-0.5">{selectedWeightMarket.threeConfirmations.criterion3.name}</div>
                     </div>
-                    <div className="text-[10px] text-[#dbc2b0] mt-0.5">{selectedWeightMarket.threeConfirmations.criterion3.name}</div>
+                    <div className="text-[10px] text-[#dbc2b0]/80 mt-1">{selectedWeightMarket.threeConfirmations.criterion3.note}</div>
                   </div>
                 </div>
+
+                {/* Daily Inflow Breakdown in Modal */}
+                {selectedWeightMarket.threeConfirmations.criterion1.dailyFlows && (
+                  <div className="p-2.5 rounded-lg bg-[#271e16] border border-[#554336]/60 flex flex-col gap-1.5">
+                    <span className="text-[11px] font-bold text-[#ffb77d]">
+                      جدول ورود نقدینگی خرد در ۳ روز کاری متوالی (منبع: دیتابورس / TSETMC):
+                    </span>
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono-num">
+                      {selectedWeightMarket.threeConfirmations.criterion1.dailyFlows.map((f, i) => (
+                        <div key={i} className="p-2 rounded bg-[#1a120b] border border-[#554336]/40">
+                          <span className="text-[#dbc2b0]/70 text-[10px] block">{f.day}</span>
+                          <span className={`font-bold ${f.status === 'positive' ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>{f.amount}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

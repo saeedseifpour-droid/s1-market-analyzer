@@ -12,6 +12,9 @@ import {
   Sparkles,
   AlertOctagon,
   RefreshCw,
+  Download,
+  Database,
+  Archive,
 } from 'lucide-react';
 import {
   SystemS1Signal,
@@ -30,6 +33,13 @@ import {
   formatStandardDailyInputTemplate
 } from '../telegram_reporter';
 import { checkDataFreshness } from '../utils/s1DataEngine';
+import {
+  getDailyHistoryArchive,
+  saveDailyReportToArchive,
+  downloadSingleReportJson,
+  downloadHistoryArchiveJson,
+  DailySnapshotRecord
+} from '../utils/s1HistoryStorage';
 
 interface DailyReportModalProps {
   isOpen: boolean;
@@ -60,9 +70,10 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
   daily13Sections,
   auditReport,
 }) => {
-  const [activeTab, setActiveTab] = useState<'dailyInput' | 'report13' | 'inputsSheet'>('dailyInput');
+  const [activeTab, setActiveTab] = useState<'dailyInput' | 'report13' | 'inputsSheet' | 'jsonExport'>('dailyInput');
   const [copied, setCopied] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [historyArchive, setHistoryArchive] = useState<DailySnapshotRecord[]>(getDailyHistoryArchive());
 
   if (!isOpen) return null;
 
@@ -79,6 +90,32 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
   const dailyInputMarkdown = formatStandardDailyInputTemplate(payload);
   const full13Markdown = formatFull13Report(payload);
   const inputsSheetMarkdown = formatDailyInputsSheetReport(payload);
+
+  const handleSaveToArchive = () => {
+    if (daily13Sections) {
+      const updated = saveDailyReportToArchive(daily13Sections, inputs, signal, auditReport || undefined);
+      setHistoryArchive(updated);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    }
+  };
+
+  const handleDownloadSingleJson = () => {
+    if (daily13Sections) {
+      const snap: DailySnapshotRecord = {
+        id: `snap_${new Date().toISOString()}`,
+        jalaliDate: daily13Sections.metadata.jalaliDate,
+        verboseDate: `${daily13Sections.metadata.dayOfWeek} ${daily13Sections.metadata.jalaliDate}`,
+        miladiDate: daily13Sections.metadata.miladiDate,
+        savedTimestamp: new Date().toISOString(),
+        timeWindow: daily13Sections.metadata.updateTime,
+        sections13: daily13Sections,
+        inputs41: inputs,
+        signal,
+      };
+      downloadSingleReportJson(snap);
+    }
+  };
 
   const getCurrentMarkdown = () => {
     switch (activeTab) {
@@ -133,7 +170,7 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-[#dbc2b0]/70 mt-0.5 font-mono-num">
-                پایش روزانه ساعت ۱۷:۰۰ الی ۱۸:۰۰ • تاریخ: {signal.lastUpdatedJalali}
+                پایش اتوماتیک: ساعت ۲۰:۰۰ • آخرین پایش دستی: {signal.lastUpdatedJalali}
               </p>
             </div>
           </div>
@@ -211,15 +248,37 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
               <Table className="w-4 h-4" />
               جدول مرجع شاخص‌ها ({inputs.length})
             </button>
+
+            <button
+              onClick={() => setActiveTab('jsonExport')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                activeTab === 'jsonExport'
+                  ? 'bg-[#ffb77d] text-[#1a120b] shadow-md'
+                  : 'bg-[#271e16] text-[#dbc2b0] hover:bg-[#322820]'
+              }`}
+            >
+              <Database className="w-4 h-4" />
+              ذخیره و آرشیو JSON روزانه ({historyArchive.length})
+            </button>
           </div>
 
-          <button
-            onClick={onOpenTelegram}
-            className="px-4 py-2 bg-[#0297e8] hover:bg-[#0284c7] text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer"
-          >
-            <Send className="w-4 h-4" />
-            ارسال ۲ مرحله‌ای به تلگرام
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSaveToArchive}
+              className="px-3.5 py-2 bg-[#10b981]/20 hover:bg-[#10b981]/30 text-[#10b981] border border-[#10b981]/40 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer transition-all active:scale-95"
+              title="ثبت گزارش ۱۳ گانه امروز در آرشیو JSON دائمی"
+            >
+              <Archive className="w-4 h-4" />
+              ثبت در آرشیو روزانه
+            </button>
+            <button
+              onClick={onOpenTelegram}
+              className="px-4 py-2 bg-[#0297e8] hover:bg-[#0284c7] text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md cursor-pointer"
+            >
+              <Send className="w-4 h-4" />
+              ارسال ۲ مرحله‌ای به تلگرام
+            </button>
+          </div>
         </div>
 
         {/* Scrollable Body */}
@@ -260,7 +319,7 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
             <div className="bg-[#18110a] border border-[#554336] rounded-xl p-5 font-mono text-xs sm:text-sm text-[#f2dfd3] whitespace-pre-wrap leading-relaxed select-text shadow-inner">
               {full13Markdown}
             </div>
-          ) : (
+          ) : activeTab === 'inputsSheet' ? (
             <div className="space-y-4">
               {/* Search bar inside sheet */}
               <div className="flex items-center justify-between gap-3">
@@ -336,6 +395,93 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
                   </table>
                 </div>
               </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* JSON Export Controls */}
+              <div className="bg-[#18110a] border border-[#554336] rounded-xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Database className="w-5 h-5 text-[#ffb77d]" />
+                    <h4 className="text-sm font-bold text-[#f2dfd3]">
+                      آرشیو و ثبت خودکار فایل JSON روزانه (ساعت ۲۰:۰۰)
+                    </h4>
+                  </div>
+                  <p className="text-xs text-[#dbc2b0]/70 leading-relaxed">
+                    گزارش استاندارد ۱۳ گانه Daily Input به صورت ساختاریافته به فرمت JSON برای مستندسازی سوابق مالی ثبت و ذخیره می‌شود.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2.5 flex-wrap w-full sm:w-auto">
+                  <button
+                    onClick={handleDownloadSingleJson}
+                    className="flex-1 sm:flex-none px-4 py-2.5 bg-[#ffb77d] text-[#1a120b] hover:bg-[#ffa964] font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 shadow-md"
+                  >
+                    <Download className="w-4 h-4" />
+                    دانلود JSON امروز
+                  </button>
+                  <button
+                    onClick={() => downloadHistoryArchiveJson(historyArchive)}
+                    className="flex-1 sm:flex-none px-4 py-2.5 bg-[#271e16] border border-[#554336] text-[#dbc2b0] hover:text-[#f2dfd3] hover:bg-[#322820] font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95"
+                  >
+                    <Archive className="w-4 h-4" />
+                    دانلود کل آرشیو ({historyArchive.length})
+                  </button>
+                </div>
+              </div>
+
+              {/* Today's JSON Live Preview */}
+              <div className="bg-[#18110a] border border-[#554336] rounded-xl p-4 font-mono text-xs text-[#f2dfd3] max-h-72 overflow-y-auto leading-relaxed select-text shadow-inner">
+                <pre className="text-[11px] text-[#96ccff]">
+                  {JSON.stringify(
+                    {
+                      metadata: daily13Sections?.metadata,
+                      savedTimestamp: new Date().toISOString(),
+                      sections13: daily13Sections,
+                      signalSummary: {
+                        actionTitle: signal.actionTitle,
+                        overallScore: signal.overallScore,
+                        confidenceScore: signal.confidenceScore,
+                      },
+                      auditStatus: auditReport?.isHealthy ? 'Passed' : 'Warning',
+                    },
+                    null,
+                    2
+                  )}
+                </pre>
+              </div>
+
+              {/* History Table */}
+              {historyArchive.length > 0 && (
+                <div className="bg-[#18110a] border border-[#554336] rounded-xl overflow-hidden">
+                  <div className="p-3 bg-[#271e16] border-b border-[#554336] font-bold text-xs text-[#dbc2b0] flex items-center justify-between">
+                    <span>سوابق گزارش‌های ۱۳ گانه ذخیره‌شده ({historyArchive.length} روز)</span>
+                    <span className="text-[11px] text-[#10b981] font-mono-num">Auto-Save 20:00 Active</span>
+                  </div>
+                  <div className="divide-y divide-[#554336]/30">
+                    {historyArchive.map((snap) => (
+                      <div key={snap.id} className="p-3 flex items-center justify-between gap-3 text-xs hover:bg-[#271e16]/60">
+                        <div className="flex items-center gap-2.5">
+                          <span className="font-bold text-[#ffb77d]">{snap.jalaliDate}</span>
+                          <span className="text-[11px] text-[#dbc2b0]/70">({snap.verboseDate})</span>
+                          <span className="text-[10px] text-[#96ccff] bg-[#96ccff]/10 px-2 py-0.5 rounded font-mono">
+                            {snap.timeWindow}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => downloadSingleReportJson(snap)}
+                            className="px-2.5 py-1 bg-[#271e16] hover:bg-[#322820] text-[#ffb77d] border border-[#554336] rounded-lg text-[11px] flex items-center gap-1 cursor-pointer"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            دانلود JSON
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

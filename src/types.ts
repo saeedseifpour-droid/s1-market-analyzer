@@ -22,10 +22,27 @@ export interface MarketScoreItem {
   }[];
   description?: string;
   threeConfirmations?: {
-    criterion1: { name: string; passed: boolean; note: string };
-    criterion2: { name: string; passed: boolean; note: string };
-    criterion3: { name: string; passed: boolean; note: string };
+    criterion1: {
+      name: string;
+      passed: boolean;
+      note: string;
+      dailyFlows?: { day: string; amount: string; status: 'positive' | 'negative' }[];
+    };
+    criterion2: {
+      name: string;
+      passed: boolean;
+      note: string;
+      dailyFlows?: { day: string; amount: string; status: 'positive' | 'negative' }[];
+    };
+    criterion3: {
+      name: string;
+      passed: boolean;
+      note: string;
+      dailyFlows?: { day: string; amount: string; status: 'positive' | 'negative' }[];
+    };
     isConfirmed: boolean;
+    confirmationTitle?: string;
+    ruleSummary?: string;
   };
   weightBreakdown?: {
     variable: string;
@@ -42,6 +59,8 @@ export interface MarketScoreItem {
     analysisSummary: string;
   };
 }
+
+export type VerificationStatusType = 'VERIFIED' | 'DERIVED' | 'UNVERIFIED';
 
 export interface InputMetric {
   id: string;
@@ -60,12 +79,14 @@ export interface InputMetric {
   sourceReference?: string;
   extractedFrom?: string;
   timeWindow?: string;
+  verificationStatus?: VerificationStatusType;
+  verificationBadge?: string;
 }
 
 export interface FundItem {
   id: string;
   name: string;
-  type: 'fixed_income' | 'gold' | 'equity' | 'leveraged';
+  type: 'fixed_income' | 'gold' | 'leveraged' | 'crypto' | 'equity';
   typeLabel: string;
   ticker: string;
   currentAllocationPct: number;
@@ -127,30 +148,32 @@ export interface SystemHistoryLog {
 // ----------------------------------------------------
 export interface PortfolioSummary {
   initialCapitalToman: number; // 1,000,000,000
-  currentValueToman: number; // e.g. 1,148,650,000
-  dailyPnlToman: number; // e.g. +14,250,000
-  dailyPnlPct: number; // e.g. +1.25%
-  totalPnlToman: number; // e.g. +148,650,000
-  totalPnlPct: number; // e.g. +14.86%
-  maxDrawdownPct: number; // e.g. -4.18%
-  winRatePct: number; // e.g. 76.5%
-  sharpeRatio: number; // e.g. 2.45
-  cashBalanceToman: number; // e.g. 50,000,000 (5%)
-  investedValueToman: number; // e.g. 1,098,650,000
+  currentValueToman: number; // e.g. 1,000,000,000
+  dailyPnlToman: number; // e.g. 0
+  dailyPnlPct: number; // e.g. 0%
+  totalPnlToman: number; // e.g. 0
+  totalPnlPct: number; // e.g. 0%
+  maxDrawdownPct: number; // e.g. 0%
+  winRatePct: number; // e.g. 100%
+  sharpeRatio: number; // e.g. 0
+  cashBalanceToman: number; // 0 Toman (کل نقدینگی در صندوق افران پارک می‌شود)
+  fixedIncomeParkToman: number; // e.g. 1,000,000,000 (100% in Efran initially)
+  investedValueToman: number; // 1,000,000,000
   lastRebalanceDateJalali: string;
   activePositionsCount: number;
+  pendingOrdersCount?: number;
 }
 
 export interface PortfolioAssetItem {
   id: string;
-  name: string; // e.g. صندوق عیار، صندوق افران، صندوق توان / خبرگان، طلای فیزیکی، نقدینگی
-  ticker: string; // e.g. عیار، افران، توان، طلا ۱۸، ریال
-  category: 'gold_etf' | 'fixed_income' | 'equity_etf' | 'physical_gold' | 'cash';
+  name: string; // e.g. صندوق درآمد ثابت افران، صندوق طلای عیار، صندوق سهامی خبرگان، بیت‌کوین (BTC)
+  ticker: string; // e.g. افران، عیار، خبرگان، BTC
+  category: 'fixed_income' | 'gold_etf' | 'equity_etf' | 'crypto';
   categoryLabel: string;
   allocatedValueToman: number;
   initialCostToman: number;
-  weightPct: number; // Current %
-  targetWeightPct: number; // System S1 target %
+  weightPct: number; // وزن واقعی فعلی بر اساس دارایی موجود (%)
+  allocationStatusLabel?: string; // وضعیت تخصیص پویا در سیستم S1 (مثلاً: پارک نقدینگی، پله ۲۰٪ فعال، آماده ورود، بدون سیگنال)
   unitsCount: number; // Quantity
   avgBuyPriceToman: number;
   currentPriceToman: number;
@@ -159,6 +182,27 @@ export interface PortfolioAssetItem {
   dailyChangePct: number;
   status: 'profit' | 'loss' | 'neutral';
   color: string;
+  executionRule: 'next_day_close' | 'instant'; // بورسی بر اساس قیمت پایانی فردا / بیتکوین آنی
+  description?: string;
+}
+
+export interface PortfolioPendingOrder {
+  id: string;
+  createdAtJalali: string;
+  assetId: string;
+  assetName: string;
+  assetTicker: string;
+  orderType: 'buy' | 'sell' | 'staged_buy' | 'rebalance';
+  sourceAssetTicker: string; // 'افران (پارک نقدینگی)'
+  targetAllocationPct: number; // e.g. 20%
+  amountToman: number; // e.g. 200,000,000 Toman
+  estimatedPriceToman: number;
+  estimatedUnits: number;
+  executionRule: 'next_day_close' | 'instant';
+  executionTimingLabel: string; // 'بر اساس قیمت پایانی روز معاملاتی بعد' یا 'اجرای فوری و لحظه‌ای (۲۴/۷)'
+  scheduledExecutionDateJalali: string;
+  status: 'pending' | 'ready_to_execute' | 'executed' | 'cancelled';
+  signalTriggerReason: string;
 }
 
 export interface PortfolioHistoryPoint {
@@ -178,12 +222,13 @@ export interface PortfolioTradeItem {
   dateJalali: string;
   assetTicker: string;
   assetName: string;
-  type: 'buy' | 'sell' | 'rebalance';
+  type: 'buy' | 'sell' | 'rebalance' | 'staged_buy';
   amountToman: number;
   units: number;
   unitPriceToman: number;
   pnlToman?: number;
   rationale: string;
+  executionMode?: 'next_day_close' | 'instant';
 }
 
 // ----------------------------------------------------

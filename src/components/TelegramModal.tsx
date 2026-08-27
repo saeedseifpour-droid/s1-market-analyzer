@@ -89,8 +89,11 @@ export const TelegramModal: React.FC<TelegramModalProps> = ({
       const savedChat = localStorage.getItem('S1_TELEGRAM_CHAT_ID');
       if (savedToken) setBotToken(savedToken);
       if (savedChat) setChatId(savedChat);
+      if (!savedToken && !telegramConfig.botToken) {
+        setShowConfig(true);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, telegramConfig.botToken]);
 
   if (!isOpen) return null;
 
@@ -340,15 +343,29 @@ export const TelegramModal: React.FC<TelegramModalProps> = ({
                   <div className="flex items-center gap-2">
                     <Settings className="w-4 h-4 text-[#ffb77d]" />
                     <span className="font-semibold">تنظیمات توکن و کانال تلگرام (API Key)</span>
+                    {!botToken && (
+                      <span className="text-[10px] bg-[#f59e0b]/20 text-[#ffb77d] border border-[#f59e0b]/40 px-2 py-0.5 rounded-full font-medium">
+                        نیاز به تنظیم
+                      </span>
+                    )}
                   </div>
                   {showConfig ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
 
                 {showConfig && (
                   <div className="p-3.5 border-t border-[#554336] space-y-3 bg-[#18110a]">
+                    <div className="p-2.5 rounded-lg bg-[#271e16] border border-[#554336]/60 text-[11px] text-[#dbc2b0] leading-relaxed">
+                      💡 <strong className="text-[#f2dfd3]">راهنمای اتصال تلگرام:</strong>
+                      <ol className="list-decimal list-inside space-y-1 mt-1 text-[#dbc2b0]/80">
+                        <li>به ربات <span className="font-mono text-[#96ccff]">@BotFather</span> در تلگرام بروید و با دستور <code className="text-[#ffb77d]">/newbot</code> ربات جدید بسازید.</li>
+                        <li>توکن API صادرشده (مانند <code className="font-mono text-[#ffb77d]">7123456789:AAH...</code>) را در کادر زیر وارد کنید.</li>
+                        <li>ربات ساخته‌شده را به کانال یا گروه خود افزوده و دسترسی <strong>مدیر (Administrator)</strong> برای ارسال پیام بدهید.</li>
+                      </ol>
+                    </div>
+
                     <div>
                       <label className="block text-[11px] text-[#dbc2b0] mb-1">
-                        توکن ربات تلگرام (Bot Token)
+                        توکن اختصاصی ربات تلگرام (Bot Token):
                       </label>
                       <input
                         type="password"
@@ -356,11 +373,12 @@ export const TelegramModal: React.FC<TelegramModalProps> = ({
                         onChange={(e) => setBotToken(e.target.value)}
                         placeholder="7123456789:AAH..."
                         className="w-full bg-[#271e16] border border-[#554336] rounded-lg px-3 py-2 text-xs text-[#f2dfd3] font-mono focus:outline-none focus:border-[#ffb77d]"
+                        dir="ltr"
                       />
                     </div>
                     <div>
                       <label className="block text-[11px] text-[#dbc2b0] mb-1">
-                        شناسه کانال یا چت تلگرام (Channel ID / Chat ID)
+                        شناسه کانال یا چت تلگرام (Channel ID / Chat ID):
                       </label>
                       <input
                         type="text"
@@ -368,12 +386,13 @@ export const TelegramModal: React.FC<TelegramModalProps> = ({
                         onChange={(e) => setChatId(e.target.value)}
                         placeholder="-1001234567890 یا @mychannel"
                         className="w-full bg-[#271e16] border border-[#554336] rounded-lg px-3 py-2 text-xs text-[#f2dfd3] font-mono focus:outline-none focus:border-[#ffb77d]"
+                        dir="ltr"
                       />
                     </div>
                     <div className="flex justify-end">
                       <button
                         onClick={handleSaveCredentials}
-                        className="px-3 py-1.5 bg-[#ffb77d] text-[#1a120b] rounded-lg text-xs font-bold hover:bg-[#ffa75e] cursor-pointer"
+                        className="px-3.5 py-1.5 bg-[#ffb77d] text-[#1a120b] rounded-lg text-xs font-bold hover:bg-[#ffa75e] cursor-pointer"
                       >
                         ذخیره تنظیمات
                       </button>

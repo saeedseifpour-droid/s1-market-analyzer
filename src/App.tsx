@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActiveTab,
   MarketScoreItem,
@@ -11,6 +11,7 @@ import {
   PortfolioAssetItem,
   PortfolioHistoryPoint,
   PortfolioTradeItem,
+  PortfolioPendingOrder,
   NewsItem,
   SystemicRiskItem,
   AiDailySummary,
@@ -28,6 +29,7 @@ import {
   initialPortfolioAssets,
   initialPortfolioHistory,
   initialPortfolioTrades,
+  initialPortfolioPendingOrders,
   initialNews,
   initialSystemicRisks,
   initialSRI,
@@ -59,6 +61,7 @@ import {
   persistUnifiedState,
   checkDataFreshness,
 } from './utils/s1DataEngine';
+import { saveDailyReportToArchive } from './utils/s1HistoryStorage';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -74,14 +77,46 @@ export default function App() {
   const [telegramConfig, setTelegramConfig] = useState<TelegramConfig>(initialTelegramConfig);
   const [historyLogs, setHistoryLogs] = useState<SystemHistoryLog[]>(initialHistoryLogs);
 
+  // Manual Run Time State (persisted for tracking manual execution)
+  const [lastManualRunTime, setLastManualRunTime] = useState<string>(() => {
+    try {
+      const stored = localStorage.getItem('S1_LAST_MANUAL_RUN_TIME');
+      if (stored) return stored;
+    } catch {}
+    return `${getLiveJalaliDateString(0, true)} ساعت ${getTehranTimeString(true)}`;
+  });
+
   // Dynamic Data Freshness Status
   const freshnessStatus = checkDataFreshness(daily13Sections?.metadata?.jalaliDate || signal.lastUpdatedJalali);
+
+  // Automated 20:00 (8:00 PM) Daily 13-Section JSON Logging Routine
+  useEffect(() => {
+    // Initial archive save on mount if today's snapshot doesn't exist
+    if (daily13Sections) {
+      saveDailyReportToArchive(daily13Sections, inputs, signal, auditReport || undefined);
+    }
+
+    // Schedule / check every minute for 20:00 Tehran time snapshot logging
+    const interval = setInterval(() => {
+      const now = new Date();
+      // Auto-save daily at 20:00 (or if triggered)
+      if (now.getHours() === 20 && now.getMinutes() === 0) {
+        if (daily13Sections) {
+          saveDailyReportToArchive(daily13Sections, inputs, signal, auditReport || undefined);
+          console.log(`[S1 Auto-Logger] Daily 13-section JSON report successfully logged at 20:00 for ${daily13Sections.metadata.jalaliDate}`);
+        }
+      }
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [daily13Sections, inputs, signal, auditReport]);
 
   // Paper Portfolio Management State
   const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary>(initialPortfolioSummary);
   const [portfolioAssets, setPortfolioAssets] = useState<PortfolioAssetItem[]>(initialPortfolioAssets);
   const [portfolioHistory, setPortfolioHistory] = useState<PortfolioHistoryPoint[]>(initialPortfolioHistory);
   const [portfolioTrades, setPortfolioTrades] = useState<PortfolioTradeItem[]>(initialPortfolioTrades);
+  const [portfolioPendingOrders, setPortfolioPendingOrders] = useState<PortfolioPendingOrder[]>(initialPortfolioPendingOrders);
 
   // News, Systematic Risks & AI Summary State
   const [news, setNews] = useState<NewsItem[]>(initialNews);
@@ -96,26 +131,144 @@ export default function App() {
   const [selectedMarketForModal, setSelectedMarketForModal] = useState<MarketScoreItem | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
-  // Rebalance 1 Billion Toman Portfolio to S1 Target Weights
-  const handleRebalancePortfolioToS1 = () => {
-    const totalVal = portfolioSummary.currentValueToman;
+  // Execute Pending Order (e.g. Next Day Close price for ETFs or Instant for BTC)
+  const handleExecutePendingOrder = (orderId: string, finalPriceToman?: number) => {
+    const targetOrder = portfolioPendingOrders.find((o) => o.id === orderId);
+    if (!targetOrder) return;
+
+    const execPrice = finalPriceToman && finalPriceToman > 0 ? finalPriceToman : targetOrder.estimatedPriceToman;
+    const amount = targetOrder.amountToman;
+    const unitsBought = execPrice > 0 ? Math.round(amount / execPrice) : 1;
     const dateStr = `${getLiveJalaliDateString(0, true)} ${getTehranTimeString(true)}`;
 
-    // Target allocations based on S1 signal
+    // 1. Deduct funds from Efran (fixed income cash park)
+    // 2. Add units and value to the target asset (Ayar, Khabargan, BTC)
     const updatedAssets = portfolioAssets.map((asset) => {
-      const targetVal = (totalVal * asset.targetWeightPct) / 100;
-      const targetUnits = asset.unitPriceToman > 0 ? Math.round(targetVal / asset.unitPriceToman) : 1;
-      const pnlToman = targetVal - asset.initialCostToman;
-      const pnlPct = Number(((pnlToman / asset.initialCostToman) * 100).toFixed(2));
+      if (asset.id === 'asset-afran') {
+        const remainingVal = Math.max(0, asset.allocatedValueToman - amount);
+        const remainingCost = Math.max(0, asset.initialCostToman - amount);
+        const afranPrice = asset.currentPriceToman || 1130;
+        const newUnits = Math.round(remainingVal / afranPrice);
+        return {
+          ...asset,
+          allocatedValueToman: remainingVal,
+          initialCostToman: remainingCost,
+          unitsCount: newUnits,
+          weightPct: Number(((remainingVal / portfolioSummary.currentValueToman) * 100).toFixed(1)),
+        };
+      }
+      if (asset.id === targetOrder.assetId) {
+        const newVal = asset.allocatedValueToman + amount;
+        const newCost = asset.initialCostToman + amount;
+        const newUnits = asset.unitsCount + unitsBought;
+        const avgPrice = newUnits > 0 ? Math.round(newCost / newUnits) : execPrice;
+        return {
+          ...asset,
+          allocatedValueToman: newVal,
+          initialCostToman: newCost,
+          unitsCount: newUnits,
+          currentPriceToman: execPrice,
+          avgBuyPriceToman: avgPrice,
+          weightPct: Number(((newVal / portfolioSummary.currentValueToman) * 100).toFixed(1)),
+          status: 'profit' as const,
+        };
+      }
+      return asset;
+    });
 
-      return {
-        ...asset,
-        allocatedValueToman: targetVal,
-        weightPct: asset.targetWeightPct,
-        units: targetUnits,
-        pnlToman,
-        pnlPct,
-      };
+    setPortfolioAssets(updatedAssets);
+
+    // 3. Mark Pending Order as executed or remove
+    setPortfolioPendingOrders((prev) => prev.filter((o) => o.id !== orderId));
+
+    // 4. Record Trade Item
+    const newTrade: PortfolioTradeItem = {
+      id: `tr-${Date.now()}`,
+      dateJalali: dateStr,
+      assetName: targetOrder.assetName,
+      assetTicker: targetOrder.assetTicker,
+      type: 'staged_buy',
+      amountToman: amount,
+      units: unitsBought,
+      unitPriceToman: execPrice,
+      rationale: `اجرای سفارش بر مبنای ${targetOrder.executionTimingLabel} - کسر از نقدینگی افران`,
+      executionMode: targetOrder.executionRule,
+    };
+    setPortfolioTrades([newTrade, ...portfolioTrades]);
+
+    // 5. Update summary
+    const efranHolding = updatedAssets.find((a) => a.id === 'asset-afran')?.allocatedValueToman || 0;
+    setPortfolioSummary((prev) => ({
+      ...prev,
+      fixedIncomeParkToman: efranHolding,
+      activePositionsCount: updatedAssets.filter((a) => a.allocatedValueToman > 0).length,
+      pendingOrdersCount: Math.max(0, prev.pendingOrdersCount - 1),
+    }));
+  };
+
+  // Cancel Pending Order
+  const handleCancelPendingOrder = (orderId: string) => {
+    setPortfolioPendingOrders((prev) => prev.filter((o) => o.id !== orderId));
+    setPortfolioSummary((prev) => ({
+      ...prev,
+      pendingOrdersCount: Math.max(0, prev.pendingOrdersCount - 1),
+    }));
+  };
+
+  // Create New Pending Order
+  const handleCreatePendingOrder = (newOrder: Omit<PortfolioPendingOrder, 'id' | 'createdAtJalali' | 'status'>) => {
+    const created: PortfolioPendingOrder = {
+      ...newOrder,
+      id: `po-${Date.now()}`,
+      createdAtJalali: `${getLiveJalaliDateString(0, true)} ${getTehranTimeString(true)}`,
+      status: 'pending',
+    };
+    setPortfolioPendingOrders([created, ...portfolioPendingOrders]);
+    setPortfolioSummary((prev) => ({
+      ...prev,
+      pendingOrdersCount: prev.pendingOrdersCount + 1,
+    }));
+  };
+
+  // Reset Portfolio to Initial Zero State (1 Billion Toman 100% in Efran)
+  const handleResetPortfolio = () => {
+    setPortfolioSummary(initialPortfolioSummary);
+    setPortfolioAssets(initialPortfolioAssets);
+    setPortfolioHistory(initialPortfolioHistory);
+    setPortfolioTrades(initialPortfolioTrades);
+    setPortfolioPendingOrders(initialPortfolioPendingOrders);
+  };
+
+  // Execute Dynamic Signal Step (Staged Allocation from Afran to Target Signal Asset)
+  const handleRebalancePortfolioToS1 = () => {
+    const totalVal = portfolioSummary.currentValueToman;
+    const stageAllocPct = 20; // 20% Stage 1 into Gold Fund Ayar based on Gold score 90/100
+    const stageAllocToman = (totalVal * stageAllocPct) / 100;
+
+    const ayarPrice = 17200;
+    const ayarUnits = Math.round(stageAllocToman / ayarPrice);
+
+    const updatedAssets = portfolioAssets.map((asset) => {
+      if (asset.id === 'asset-afran') {
+        const newVal = totalVal - stageAllocToman;
+        return {
+          ...asset,
+          allocatedValueToman: newVal,
+          weightPct: 100 - stageAllocPct,
+          unitsCount: Math.round(newVal / (asset.currentPriceToman || 1000)),
+          allocationStatusLabel: '۸۰٪ نقدینگی آزاد پارک‌شده (سود روزشمار ۳۰٪)',
+        };
+      }
+      if (asset.id === 'asset-ayar') {
+        return {
+          ...asset,
+          allocatedValueToman: stageAllocToman,
+          weightPct: stageAllocPct,
+          unitsCount: ayarUnits,
+          allocationStatusLabel: 'پله اول خرید فعال با سیگنال طلا (نمره ۹۰/۱۰۰)',
+        };
+      }
+      return asset;
     });
 
     setPortfolioAssets(updatedAssets);
@@ -123,23 +276,22 @@ export default function App() {
     // Update Summary
     setPortfolioSummary((prev) => ({
       ...prev,
-      lastRebalanceDateJalali: `${getLiveJalaliVerboseDate(0)} - بازتوازن هوشمند S1`,
+      lastRebalanceDateJalali: `${getLiveJalaliVerboseDate(0)} - اجرای پله اول سیگنال طلا (۲۰٪)`,
     }));
 
-    // Add rebalance trade record
-    const rebalanceTrade: PortfolioTradeItem = {
+    // Add dynamic trade record
+    const stageTrade: PortfolioTradeItem = {
       id: `trade-${Date.now()}`,
       dateJalali: getLiveJalaliVerboseDate(0),
-      assetName: 'بازتوازن جامع سبد S1',
-      assetTicker: 'REBALANCE-ALL',
-      type: 'rebalance',
-      units: 0,
-      unitPriceToman: 0,
-      amountToman: totalVal,
-      rationale: 'اجرای بازتوازن خودکار طبق مدل سیستم S1 (افزایش طلا به ۳۵٪ و افران به ۳۰٪)',
+      assetName: 'صندوق طلای عیار',
+      assetTicker: 'AYAR',
+      type: 'buy',
+      units: ayarUnits,
+      unitPriceToman: ayarPrice,
+      amountToman: stageAllocToman,
+      rationale: 'خرید پله اول صندوق طلای عیار (۲۰٪ از کل سبد) به دلیل تایید سیگنال طلا (نمره ۹۰) با کسر از صندوق افران',
     };
-
-    setPortfolioTrades([rebalanceTrade, ...portfolioTrades]);
+    setPortfolioTrades([stageTrade, ...portfolioTrades]);
   };
 
   // Re-calculate engine when inputs change
@@ -250,6 +402,13 @@ export default function App() {
       setAuditReport(newAudit);
     }
 
+    // Update and persist last manual run time
+    const runTime = `${getLiveJalaliDateString(0, true)} ساعت ${getTehranTimeString(true)}`;
+    setLastManualRunTime(runTime);
+    try {
+      localStorage.setItem('S1_LAST_MANUAL_RUN_TIME', runTime);
+    } catch {}
+
     persistUnifiedState(finalInputs, finalSections, freshSignal);
 
     // Add to history log
@@ -284,6 +443,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         isOpenMobile={isMobileSidebarOpen}
         setIsOpenMobile={setIsMobileSidebarOpen}
+        portfolioSummary={portfolioSummary}
       />
 
       {/* 2. Main Content Wrapper */}
@@ -296,12 +456,17 @@ export default function App() {
         />
 
         {/* Dynamic Main View */}
-        <main className="relative pt-20 p-4 sm:p-6 max-w-7xl w-full mx-auto min-h-screen">
+        <main className="relative pt-6 sm:pt-8 p-4 sm:p-6 max-w-7xl w-full mx-auto min-h-screen">
           {activeTab === 'dashboard' && (
             <DashboardView
               signal={signal}
               marketScores={marketScores}
               freshnessStatus={freshnessStatus}
+              lastManualRunTime={lastManualRunTime}
+              portfolioSummary={portfolioSummary}
+              portfolioAssets={portfolioAssets}
+              portfolioPendingOrders={portfolioPendingOrders}
+              systemicRisks={systemicRisks}
               onOpenTelegramModal={() => setIsTelegramModalOpen(true)}
               onOpenRunNowModal={() => setIsRunNowModalOpen(true)}
               onOpenDailyReportModal={() => setIsDailyReportModalOpen(true)}
@@ -319,8 +484,13 @@ export default function App() {
               assets={portfolioAssets}
               history={portfolioHistory}
               trades={portfolioTrades}
+              pendingOrders={portfolioPendingOrders}
               signal={signal}
               onRebalanceToS1={handleRebalancePortfolioToS1}
+              onExecutePendingOrder={handleExecutePendingOrder}
+              onCancelPendingOrder={handleCancelPendingOrder}
+              onCreatePendingOrder={handleCreatePendingOrder}
+              onResetPortfolio={handleResetPortfolio}
             />
           )}
 
