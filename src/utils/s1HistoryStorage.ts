@@ -9,7 +9,9 @@ export interface DailySnapshotRecord {
   timeWindow: string;
   sections13: StandardDailyInput13Sections;
   inputs41?: InputMetric[];
+  inputs?: InputMetric[];
   signal?: SystemS1Signal;
+  auditReport?: ValidationAuditReport;
   auditSummary?: {
     totalChecks: number;
     passedChecks: number;
@@ -61,7 +63,9 @@ export function saveDailyReportToArchive(
     timeWindow: sections13?.metadata?.updateTime || timeNow,
     sections13,
     inputs41: inputs,
+    inputs: inputs,
     signal,
+    auditReport,
     auditSummary: auditReport
       ? {
           totalChecks: auditReport.checks.length,

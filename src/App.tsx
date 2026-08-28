@@ -55,13 +55,19 @@ import {
   getLiveJalaliVerboseDate,
   getTehranTimeString,
   getLiveDateTimeString,
+  getLiveJalaliDetails,
 } from './utils/dateHelper';
 import {
   loadUnifiedState,
   persistUnifiedState,
   checkDataFreshness,
+  syncFundsFrom13Sections,
+  syncPortfolioAssetsFrom13Sections,
+  recomputeS1Engine,
+  computeS1MarketScoresAndSignal,
+  build41MetricsFrom13Sections,
 } from './utils/s1DataEngine';
-import { saveDailyReportToArchive } from './utils/s1HistoryStorage';
+import { saveDailyReportToArchive, DailySnapshotRecord } from './utils/s1HistoryStorage';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -73,7 +79,7 @@ export default function App() {
   const [inputs, setInputs] = useState<InputMetric[]>(unifiedState.inputs);
   const [daily13Sections, setDaily13Sections] = useState<StandardDailyInput13Sections>(unifiedState.daily13Sections);
   const [auditReport, setAuditReport] = useState<ValidationAuditReport | null>(unifiedState.auditReport);
-  const [funds, setFunds] = useState<FundItem[]>(initialFunds);
+  const [funds, setFunds] = useState<FundItem[]>(() => syncFundsFrom13Sections(unifiedState.daily13Sections, initialFunds));
   const [telegramConfig, setTelegramConfig] = useState<TelegramConfig>(initialTelegramConfig);
   const [historyLogs, setHistoryLogs] = useState<SystemHistoryLog[]>(initialHistoryLogs);
 
@@ -387,51 +393,95 @@ export default function App() {
     new13Sections?: StandardDailyInput13Sections,
     newAudit?: ValidationAuditReport
   ) => {
-    setSignal(freshSignal);
-    const finalInputs = newInputs && newInputs.length > 0 ? newInputs : inputs;
-    const finalSections = new13Sections || daily13Sections;
+    const todayDetails = getLiveJalaliDetails(0);
+    const timeNow = getTehranTimeString(true);
+    const nowJalali = `${todayDetails.jalaliStandard} ${timeNow}`;
 
-    if (newInputs && newInputs.length > 0) {
-      setInputs(newInputs);
-      handleRecalculateEngine(newInputs);
-    }
-    if (new13Sections) {
-      setDaily13Sections(new13Sections);
-    }
-    if (newAudit) {
-      setAuditReport(newAudit);
+    const baseSections = new13Sections || daily13Sections || getDefault13SectionsData();
+    const finalSections: StandardDailyInput13Sections = {
+      ...baseSections,
+      metadata: {
+        ...baseSections.metadata,
+        jalaliDate: todayDetails.jalaliStandard,
+        miladiDate: todayDetails.miladiDate,
+        dayOfWeek: todayDetails.dayOfWeek,
+        updateTime: timeNow,
+        s1EngineVersion: '1.3',
+      },
+    };
+
+    const finalInputs = newInputs && newInputs.length > 0 ? newInputs : build41MetricsFrom13Sections(finalSections);
+    
+    // Recompute engine with 13-sections as single source of truth
+    const engineResult = recomputeS1Engine(finalInputs, marketScores, freshSignal, finalSections);
+
+    const updatedSignal: SystemS1Signal = {
+      ...engineResult.signal,
+      lastUpdatedJalali: nowJalali,
+      isLive: true,
+    };
+
+    setSignal(updatedSignal);
+    setMarketScores(engineResult.marketScores);
+    setInputs(finalInputs);
+    setDaily13Sections(finalSections);
+    setFunds(syncFundsFrom13Sections(finalSections, funds));
+    setPortfolioAssets(syncPortfolioAssetsFrom13Sections(finalSections, portfolioAssets));
+
+    if (newAudit || engineResult.auditReport) {
+      setAuditReport(newAudit || engineResult.auditReport);
     }
 
     // Update and persist last manual run time
-    const runTime = `${getLiveJalaliDateString(0, true)} ساعت ${getTehranTimeString(true)}`;
+    const runTime = `${todayDetails.jalaliStandard} ساعت ${timeNow}`;
     setLastManualRunTime(runTime);
     try {
       localStorage.setItem('S1_LAST_MANUAL_RUN_TIME', runTime);
     } catch {}
 
-    persistUnifiedState(finalInputs, finalSections, freshSignal);
+    persistUnifiedState(finalInputs, finalSections, updatedSignal);
 
     // Add to history log
     const newLog: SystemHistoryLog = {
       id: `log-${Date.now()}`,
       timestamp: new Date().toISOString(),
-      jalaliDate: freshSignal.lastUpdatedJalali,
-      action: freshSignal.actionTitle,
-      compositeScore: freshSignal.overallScore,
-      bourseScore: marketScores.find((m) => m.id === 'bourse')?.score || 82,
-      goldScore: marketScores.find((m) => m.id === 'gold')?.score || 90,
-      btcScore: marketScores.find((m) => m.id === 'btc')?.score || 58,
-      usdtScore: marketScores.find((m) => m.id === 'usdt')?.score || 81,
-      confidence: `${freshSignal.confidenceScore}/۱۰ (بسیار بالا)`,
-      notes: freshSignal.summaryText,
+      jalaliDate: updatedSignal.lastUpdatedJalali,
+      action: updatedSignal.actionTitle,
+      compositeScore: updatedSignal.overallScore,
+      bourseScore: engineResult.marketScores.find((m) => m.id === 'bourse')?.score || 82,
+      goldScore: engineResult.marketScores.find((m) => m.id === 'gold')?.score || 90,
+      btcScore: engineResult.marketScores.find((m) => m.id === 'btc')?.score || 58,
+      usdtScore: engineResult.marketScores.find((m) => m.id === 'usdt')?.score || 81,
+      confidence: `${updatedSignal.confidenceScore}/۱۰ (بسیار بالا)`,
+      notes: updatedSignal.summaryText,
     };
     setHistoryLogs([newLog, ...historyLogs]);
+  };
+
+  const handleLoadArchiveSnapshot = (snapshot: DailySnapshotRecord) => {
+    if (!snapshot.sections13) return;
+    const sections = snapshot.sections13;
+    const loadedInputs = snapshot.inputs && snapshot.inputs.length > 0 ? snapshot.inputs : build41MetricsFrom13Sections(sections);
+    const engineResult = computeS1MarketScoresAndSignal(loadedInputs, sections, snapshot.signal);
+
+    setDaily13Sections(sections);
+    setInputs(loadedInputs);
+    setSignal(snapshot.signal || engineResult.signal);
+    setMarketScores(engineResult.marketScores);
+    setFunds(syncFundsFrom13Sections(sections, funds));
+    setPortfolioAssets(syncPortfolioAssetsFrom13Sections(sections, portfolioAssets));
+    if (snapshot.auditReport) {
+      setAuditReport(snapshot.auditReport);
+    }
+    persistUnifiedState(loadedInputs, sections, snapshot.signal || engineResult.signal);
   };
 
   const handleRevalidateCore = () => {
     const validated = runS1ValidationCore(inputs, daily13Sections);
     setAuditReport(validated.auditReport);
     setDaily13Sections(validated.validated13Sections);
+    setFunds(syncFundsFrom13Sections(validated.validated13Sections, funds));
+    setPortfolioAssets(syncPortfolioAssetsFrom13Sections(validated.validated13Sections, portfolioAssets));
     persistUnifiedState(inputs, validated.validated13Sections, signal);
   };
 
@@ -513,7 +563,16 @@ export default function App() {
               auditReport={auditReport}
               onOpenValidationCore={() => setIsValidationCoreModalOpen(true)}
               onApplyLiveResult={(result) => {
+                const todayDetails = getLiveJalaliDetails(0);
+                const timeNow = getTehranTimeString(true);
+                const updatedSignal: SystemS1Signal = {
+                  ...signal,
+                  lastUpdatedJalali: `${todayDetails.jalaliStandard} ${timeNow}`,
+                  isLive: true,
+                };
+                setSignal(updatedSignal);
                 setInputs(result.updatedInputs);
+                const finalSections = result.validated13Sections || daily13Sections;
                 if (result.validated13Sections) {
                   setDaily13Sections(result.validated13Sections);
                 }
@@ -521,6 +580,7 @@ export default function App() {
                   setAuditReport(result.auditReport);
                 }
                 handleRecalculateEngine(result.updatedInputs);
+                persistUnifiedState(result.updatedInputs, finalSections, updatedSignal);
               }}
             />
           )}
@@ -580,6 +640,7 @@ export default function App() {
         aiSummary={aiDailySummary}
         daily13Sections={daily13Sections}
         auditReport={auditReport}
+        onLoadSnapshotAsActive={handleLoadArchiveSnapshot}
         onOpenTelegram={() => {
           setIsDailyReportModalOpen(false);
           setIsTelegramModalOpen(true);

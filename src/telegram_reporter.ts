@@ -3,6 +3,7 @@ import { getLiveJalaliDetails, getTehranTimeString, getLiveJalaliDateString } fr
 import { checkDataFreshness } from './utils/s1DataEngine';
 import { runS1ValidationCore, getDefault13SectionsData } from './utils/s1ValidationCore';
 import { recalculateS1ScoresFromInputs } from './utils/marketDataLive';
+import { getCompleteDeterministicSnapshot } from './utils/directMarketApis';
 import {
   initialMarketScores,
   initialSignal,
@@ -228,7 +229,7 @@ ${freshnessBanner}━━━━━━━━━━━━━━━━━━━━�
 • صندوق شمش عیار: ${d?.section6_ayarFund?.closingPrice || '۵۸,۴۵۵ تومان'} (حباب ${d?.section6_ayarFund?.navDiffPct || '+۰.۶۱٪'}) [منبع: بورس کالا • ۱۵:۰۰]
 • صندوق کهربا: ${d?.section9_otherGoldFunds?.kahroba || '۶۱,۲۰۰ تومان (+۰.۵۵٪)'} [منبع: بورس کالا • ۱۵:۰۰]
 • صندوق اهرمی توان: ${d?.section8_tavanFund?.closingPrice || '۵۱,۹۵۴ ریال'} (+۴.۸٪) [منبع: TSETMC • ۱۲:۳۵]
-• صندوق درآمد ثابت افران: ${d?.section5_afranFund?.closingPrice || '۲,۲۱۵ ریال'} (سود موثر ۳۱.۵٪) [منبع: TSETMC / Fipiran • ۱۵:۰۰]
+• صندوق درآمد ثابت افران: ${d?.section5_afranFund?.closingPrice || '۵۲,۷۳۴ ریال'} (NAV: ${d?.section5_afranFund?.navPerUnit || '۵۲,۷۶۱ ریال'}) [منبع: TSETMC / Fipiran • ۱۵:۰۰]
 
 ۶️⃣ **ارزیابی دو مرحله‌ای ابزارهای طلا:**
 • مرحله ۱ (جذابیت طلا): ${marketScores.find(m => m.id === 'gold')?.score || 90}/۱۰۰ 🟢 | مرحله ۲ (انتخاب ابزار): صندوق شمش عیار با نمره ۹۴/۱۰۰ به عنوان ابزار پایه ۸۰٪ بخش طلا تعیین شد. [منبع محاسباتی: S1 Valuation Core]
@@ -419,8 +420,8 @@ export function formatStandardDailyInputTemplate(payload: TelegramReportPayload)
 
   // Section 5 (Afran)
   const s5 = d?.section5_afranFund;
-  const afranPrice = s5?.closingPrice || getV('fund-afran-price', '۲,۲۱۵ ریال');
-  const afranNav = s5?.navPerUnit || '۲,۲۱۵ ریال';
+  const afranPrice = s5?.closingPrice || getV('fund-afran-price', '۵۲,۷۳۴ ریال');
+  const afranNav = s5?.navPerUnit || '۵۲,۷۶۱ ریال';
   const afranNavDiff = s5?.navDiffPct || '۰.۰٪';
   const afranVol = s5?.volumeUnits || '۱,۸۵۰,۰۰۰,۰۰۰ واحد';
   const afranVal = s5?.valueBillionToman || getV('fund-afran-volume', '۴۱۰ میلیارد تومان');
@@ -977,8 +978,8 @@ export async function sendDualTelegramPipeline(
 }
 
 /**
- * Dynamically extract and build live S1 data payload using direct REST APIs,
- * Gemini Search Grounding (if available), and the mathematical S1 Validation Core.
+ * Dynamically extract and build live S1 data payload using direct REST APIs (Layer 1)
+ * and the mathematical S1 Validation Core & Gemini AI Synthesis (Layer 2).
  */
 export async function buildLiveTelegramPayload(geminiApiKey?: string): Promise<TelegramReportPayload> {
   const dateDetails = getLiveJalaliDetails(0);
@@ -987,110 +988,42 @@ export async function buildLiveTelegramPayload(geminiApiKey?: string): Promise<T
 
   console.log(`📅 Preparing live S1 data for: ${dateDetails.verbose} (${dateDetails.jalaliStandard})`);
 
-  let liveExtractedData: Record<string, any> = {};
+  // 1. LAYER 1: DETERMINISTIC DIRECT REST APIS (Nobitex, Binance, Yahoo Finance, Alternative.me)
+  console.log('📡 Layer 1: Querying Direct REST APIs (Nobitex, Binance, Yahoo Finance, Alternative.me)...');
+  const deterministicSnapshot = await getCompleteDeterministicSnapshot();
+  console.log(`✅ Layer 1 completed. Sources: ${deterministicSnapshot.sourcesUsed.join(', ')}`);
 
-  // 1. Direct REST APIs for Crypto
-  try {
-    const cryptoRes = await fetch(
-      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true',
-      { signal: AbortSignal.timeout(4000) }
-    );
-    if (cryptoRes.ok) {
-      const cryptoJson = await cryptoRes.json();
-      if (cryptoJson?.bitcoin?.usd) {
-        liveExtractedData.btcPriceUsd = Math.round(cryptoJson.bitcoin.usd).toLocaleString('en-US');
-        if (cryptoJson.bitcoin.usd_24h_change !== undefined) {
-          const chg = cryptoJson.bitcoin.usd_24h_change;
-          liveExtractedData.btcChangePct = `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`;
-        }
-      }
-      if (cryptoJson?.ethereum?.usd) {
-        liveExtractedData.ethPriceUsd = Math.round(cryptoJson.ethereum.usd).toLocaleString('en-US');
-        if (cryptoJson.ethereum.usd_24h_change !== undefined) {
-          const chg = cryptoJson.ethereum.usd_24h_change;
-          liveExtractedData.ethChangePct = `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`;
-        }
-      }
-    }
-  } catch (e) {
-    // Try Binance
-    try {
-      const btcRes = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT', {
-        signal: AbortSignal.timeout(3000),
-      });
-      if (btcRes.ok) {
-        const btcData = await btcRes.json();
-        if (btcData?.lastPrice) {
-          liveExtractedData.btcPriceUsd = Math.round(parseFloat(btcData.lastPrice)).toLocaleString('en-US');
-          const chg = parseFloat(btcData.priceChangePercent);
-          liveExtractedData.btcChangePct = `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`;
-        }
-      }
-    } catch (binanceErr) {
-      // ignore
-    }
-  }
+  let liveExtractedData: Record<string, any> = {
+    ...deterministicSnapshot,
+  };
 
-  // Fear & Greed Index
-  try {
-    const fngRes = await fetch('https://api.alternative.me/fng/?limit=1', { signal: AbortSignal.timeout(3000) });
-    if (fngRes.ok) {
-      const fngJson = await fngRes.json();
-      if (fngJson?.data?.[0]?.value) {
-        liveExtractedData.cryptoFearGreed = fngJson.data[0].value;
-      }
-    }
-  } catch (fngErr) {
-    // ignore
-  }
-
-  // 2. Gemini Search Grounding for Live Iranian & Global Markets if API key available
+  // 2. LAYER 2: GEMINI AI SYNTHESIS & S1 NARRATIVE
   if (key) {
     try {
-      console.log('🌐 Fetching live market prices via Google Search Grounding...');
+      console.log('🧠 Layer 2: Synthesizing executive commentary via Gemini AI...');
       const ai = new GoogleGenAI({ apiKey: key });
-      const prompt = `شما تحلیل‌گر داده‌های مالی سیستم S1 هستید.
-تاریخ روز: ${dateDetails.verbose} (${dateDetails.miladiDate}).
-با ابزار Google Search آخرین نرخ‌های روز را از مراجع رسمی (tgju.org، بون‌بست، اتحادیه طلا و tsetmc) استخراج کنید:
-۱. نرخ اسکناس دلار آزاد تهران به تومان
-۲. نرخ تتر به تومان
-۳. قیمت هر گرم طلای ۱۸ عیار و سکه امامی طرح جدید به تومان
-۴. قیمت انس جهانی طلا (XAU/USD)
-۵. شاخص کل و ارزش معاملات خرد بورس تهران
+      const prompt = `شما تحلیل‌گر ارشد سیستم S1 (نسخه ۱.۳) هستید.
+تاریخ: ${dateDetails.verbose} (${dateDetails.miladiDate}).
 
-خروجی را صرفاً در قالب یک شیء JSON با کلیدهای زیر بنویسید (بدون هرگونه کد یا توضیح اضافی):
+ارقام استخراج‌شده از منابع زنده (Layer 1):
+- نرخ تتر (نوبیتکس): ${deterministicSnapshot.usdtToman} تومان
+- دلار آزاد: ${deterministicSnapshot.usdFreeToman} تومان
+- اونس طلا (Yahoo Finance): ${deterministicSnapshot.goldOunceUsd} دلار
+- طلای ۱۸ عیار S1: ${deterministicSnapshot.gold18kGramToman} تومان
+- سکه امامی S1: ${deterministicSnapshot.goldCoinEmamiToman} تومان
+- بیت‌کوین (بایننس): ${deterministicSnapshot.btcPriceUsd} دلار
+- شاخص کل بورس: ${deterministicSnapshot.tseIndex}
+
+یک جمله تحلیل کوتاه و موثق از روند کلی بازارها برای گزارش روزانه بنویسید (در قالب JSON):
 {
-  "usdFreeToman": "قیمت دلار آزاد مثلا 202500",
-  "usdYesterday": "قیمت دیروز دلار",
-  "usdChangePct": "درصد تغییر دلار",
-  "usdtToman": "قیمت تتر",
-  "usdtYesterday": "قیمت دیروز تتر",
-  "usdtChangePct": "درصد تغییر تتر",
-  "goldOunceUsd": "قیمت انس طلا به دلار مثلا 4615",
-  "ounceYesterday": "قیمت انس دیروز",
-  "ounceChangePct": "درصد تغییر انس",
-  "gold18kGramToman": "قیمت هر گرم طلای ۱۸ عیار مثلا 22020000",
-  "gold18kYesterday": "قیمت دیروز طلای ۱۸ عیار",
-  "gold18kChangePct": "درصد تغییر طلای ۱۸ عیار",
-  "goldCoinEmamiToman": "قیمت سکه تمام طرح جدید امامی مثلا 221960000",
-  "sekeYesterday": "قیمت دیروز سکه امامی",
-  "sekeChangePct": "درصد تغییر سکه امامی",
-  "coinBubblePct": "درصد حباب سکه",
-  "btcPriceUsd": "قیمت بیت‌کوین به دلار",
-  "tseIndex": "شاخص کل بورس تهران",
-  "tseIndexChangePct": "درصد تغییر شاخص کل",
-  "tseEqualWeight": "شاخص هم‌وزن",
-  "tseRetailVolumeBillionToman": "ارزش معاملات خرد به میلیارد تومان",
-  "tseRealMoneyFlowBillionToman": "خالص ورود پول حقیقی به میلیارد تومان",
-  "marketSummaryFa": "خلاصه کوتاه و رسمی وضعیت امروز بازارها"
+  "marketSummaryFa": "یک جمله تحلیل جامع و مدیریتی بازارها"
 }`;
 
       const geminiRes = await ai.models.generateContent({
-        model: 'gemini-3.7-flash',
+        model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
-          tools: [{ googleSearch: {} }],
-          temperature: 0.1,
+          temperature: 0.2,
         },
       });
 
@@ -1099,10 +1032,10 @@ export async function buildLiveTelegramPayload(geminiApiKey?: string): Promise<T
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         liveExtractedData = { ...liveExtractedData, ...parsed };
-        console.log('✅ Google Search Grounding successfully extracted live values.');
+        console.log('✅ Layer 2: Gemini AI synthesis completed.');
       }
-    } catch (searchErr) {
-      console.warn('⚠️ Gemini live search failed or rate-limited; proceeding with calibrated baseline & live crypto:', searchErr);
+    } catch (aiErr) {
+      console.warn('⚠️ Layer 2: Gemini synthesis fallback notice:', aiErr);
     }
   }
 

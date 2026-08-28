@@ -1281,7 +1281,7 @@ export const initialFunds: FundItem[] = [
     ticker: 'افران',
     currentAllocationPct: 80,
     recommendedAllocationPct: 100,
-    navPerUnit: 2215,
+    navPerUnit: 52761,
     monthlyReturn: 2.55,
     quarterlyReturn: 7.85,
     aumBillionToman: 28000,

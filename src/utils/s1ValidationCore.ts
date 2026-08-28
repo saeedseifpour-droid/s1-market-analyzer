@@ -8,6 +8,7 @@ import {
   getLiveJalaliDateString,
   getLiveJalaliVerboseDate,
   getTehranTimeString,
+  getLiveJalaliDetails,
 } from './dateHelper';
 
 /**
@@ -119,9 +120,9 @@ export function getDefault13SectionsData(): StandardDailyInput13Sections {
       marketNews: 'جهش تاریخی شاخص کل بورس تهران به ۶,۳۸۶,۵۷۶ واحد با رشد ۱۶۲,۶۹۷ واحدی (+۲.۶۱٪) و ارزش معاملات خرد ۵۴.۲ همت',
     },
     section5_afranFund: {
-      closingPrice: '2,215 ریال',
-      navPerUnit: '2,215 ریال',
-      navDiffPct: '0.0%',
+      closingPrice: '52,734 ریال',
+      navPerUnit: '52,761 ریال',
+      navDiffPct: '-0.05%',
       volumeUnits: '1,850,000,000 واحد',
       valueBillionToman: '410 میلیارد تومان',
       moneyFlow: '-320 میلیارد تومان (جابجایی به سهام)',
@@ -474,11 +475,12 @@ export function runS1ValidationCore(
   // -------------------------------------------------------------
   // 2. CONSTRUCT VALIDATED 13-SECTION MODEL
   // -------------------------------------------------------------
+  const todayDetails = getLiveJalaliDetails(0);
   const validated13Sections: StandardDailyInput13Sections = {
     metadata: {
-      jalaliDate: rawInputs.jalaliDate || currentSections.metadata.jalaliDate || jalaliDate,
-      miladiDate: currentSections.metadata.miladiDate,
-      dayOfWeek: currentSections.metadata.dayOfWeek,
+      jalaliDate: rawInputs.jalaliDate || todayDetails.jalaliStandard,
+      miladiDate: todayDetails.miladiDate,
+      dayOfWeek: todayDetails.dayOfWeek,
       updateTime: timeNow,
       s1EngineVersion: '1.3',
     },

@@ -54,6 +54,7 @@ interface DailyReportModalProps {
   onOpenTelegram: () => void;
   daily13Sections?: StandardDailyInput13Sections;
   auditReport?: ValidationAuditReport | null;
+  onLoadSnapshotAsActive?: (snapshot: DailySnapshotRecord) => void;
 }
 
 export const DailyReportModal: React.FC<DailyReportModalProps> = ({
@@ -69,6 +70,7 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
   onOpenTelegram,
   daily13Sections,
   auditReport,
+  onLoadSnapshotAsActive,
 }) => {
   const [activeTab, setActiveTab] = useState<'dailyInput' | 'report13' | 'inputsSheet' | 'jsonExport'>('dailyInput');
   const [copied, setCopied] = useState<boolean>(false);
@@ -469,6 +471,19 @@ export const DailyReportModal: React.FC<DailyReportModalProps> = ({
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
+                          {onLoadSnapshotAsActive && (
+                            <button
+                              onClick={() => {
+                                onLoadSnapshotAsActive(snap);
+                                onClose();
+                              }}
+                              className="px-2.5 py-1 bg-[#10b981]/20 hover:bg-[#10b981]/30 text-[#10b981] border border-[#10b981]/40 rounded-lg text-[11px] flex items-center gap-1 cursor-pointer font-bold"
+                              title="اعمال این گزارش به عنوان داده‌های فعال کل سیستم و داشبورد"
+                            >
+                              <RefreshCw className="w-3 h-3" />
+                              اعمال به عنوان داده فعال
+                            </button>
+                          )}
                           <button
                             onClick={() => downloadSingleReportJson(snap)}
                             className="px-2.5 py-1 bg-[#271e16] hover:bg-[#322820] text-[#ffb77d] border border-[#554336] rounded-lg text-[11px] flex items-center gap-1 cursor-pointer"

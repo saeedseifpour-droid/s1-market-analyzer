@@ -26,10 +26,18 @@ import {
   Eye,
   ChevronDown,
   ChevronUp,
+  Edit3,
+  RefreshCw,
 } from 'lucide-react';
 import { getLiveJalaliDateString, getTehranTimeString } from '../utils/dateHelper';
-import { fetchLiveMarketDataViaGemini, LiveExtractionResult } from '../utils/marketDataLive';
+import {
+  fetchLiveMarketDataViaGemini,
+  fetchSingleDomainLive,
+  applyManualOverridesToS1,
+  LiveExtractionResult,
+} from '../utils/marketDataLive';
 import { getDefault13SectionsData } from '../utils/s1ValidationCore';
+import { S1SourceMapModal } from './S1SourceMapModal';
 
 interface RunNowModalProps {
   isOpen: boolean;
@@ -62,6 +70,37 @@ export const RunNowModal: React.FC<RunNowModalProps> = ({
   );
   const [auditReport, setAuditReport] = useState<ValidationAuditReport | null>(null);
   const [showFullDetails, setShowFullDetails] = useState<boolean>(false);
+  const [isSourceMapOpen, setIsSourceMapOpen] = useState<boolean>(false);
+
+  // Field-specific live refresh and inline edit states
+  const [loadingDomain, setLoadingDomain] = useState<'crypto' | 'gold' | 'tether' | 'bourse' | null>(null);
+  const [editingDomain, setEditingDomain] = useState<'crypto' | 'gold' | 'tether' | 'bourse' | null>(null);
+  const [updatedFields, setUpdatedFields] = useState<Record<string, 'searched' | 'edited'>>({});
+
+  // Quick edit form values
+  const [editValues, setEditValues] = useState<{
+    usdt: string;
+    usdFree: string;
+    btcPrice: string;
+    btcChangePct: string;
+    goldOunce: string;
+    gold18k: string;
+    sekeEmami: string;
+    tseIndex: string;
+    tseIndexChangePct: string;
+    retailVolume: string;
+  }>({
+    usdt: '',
+    usdFree: '',
+    btcPrice: '',
+    btcChangePct: '',
+    goldOunce: '',
+    gold18k: '',
+    sekeEmami: '',
+    tseIndex: '',
+    tseIndexChangePct: '',
+    retailVolume: '',
+  });
 
   const steps = [
     { title: 'استعلام موتور جستجوی هوشمند از مراجع رسمی TGJU, TSETMC, CoinGlass و TradingView', duration: 1000 },
@@ -73,6 +112,8 @@ export const RunNowModal: React.FC<RunNowModalProps> = ({
   const handleStartRun = async () => {
     setStage('running');
     setCurrentStepIndex(0);
+    setUpdatedFields({});
+    setEditingDomain(null);
 
     let currentStep = 0;
     const interval = setInterval(() => {
@@ -101,6 +142,72 @@ export const RunNowModal: React.FC<RunNowModalProps> = ({
     }
   };
 
+  // Re-search a single specific domain
+  const handleRefreshDomain = async (domain: 'crypto' | 'gold' | 'tether' | 'bourse') => {
+    setLoadingDomain(domain);
+    try {
+      const result = await fetchSingleDomainLive(domain, extractedInputs, extracted13Sections);
+      setExtractedInputs(result.updatedInputs);
+      setExtracted13Sections(result.validated13Sections);
+      setAuditReport(result.auditReport);
+      setUpdatedFields((prev) => ({ ...prev, [domain]: 'searched' }));
+    } catch (err) {
+      console.warn(`Error refreshing domain ${domain}:`, err);
+    } finally {
+      setLoadingDomain(null);
+    }
+  };
+
+  // Open inline edit for a domain
+  const handleOpenEditDomain = (domain: 'crypto' | 'gold' | 'tether' | 'bourse') => {
+    const s1 = extracted13Sections.section1_iranMacro;
+    const s2 = extracted13Sections.section2_globalMarkets;
+    const s3 = extracted13Sections.section3_crypto;
+    const s4 = extracted13Sections.section4_bourse;
+
+    setEditValues({
+      usdt: s1.usdt.replace(/[^0-9]/g, ''),
+      usdFree: s1.usdFree.replace(/[^0-9]/g, ''),
+      btcPrice: s3.btcPrice.replace(/[^0-9]/g, ''),
+      btcChangePct: s3.btcChangePct,
+      goldOunce: s2.goldOunce.replace(/[^0-9]/g, ''),
+      gold18k: s1.gold18k.replace(/[^0-9]/g, ''),
+      sekeEmami: s1.sekeEmami.replace(/[^0-9]/g, ''),
+      tseIndex: s4.tseIndex.replace(/[^0-9]/g, ''),
+      tseIndexChangePct: s4.tseIndexChangePct,
+      retailVolume: (s4.retailVolume || s4.retailTradeValue || '').replace(/[^0-9]/g, ''),
+    });
+    setEditingDomain(domain);
+  };
+
+  // Save manual override for a domain
+  const handleSaveDomainEdit = (domain: 'crypto' | 'gold' | 'tether' | 'bourse') => {
+    const overrides: Record<string, any> = {};
+
+    if (domain === 'tether') {
+      if (editValues.usdt) overrides.usdt = editValues.usdt;
+      if (editValues.usdFree) overrides.usdFree = editValues.usdFree;
+    } else if (domain === 'crypto') {
+      if (editValues.btcPrice) overrides.btcPrice = editValues.btcPrice;
+      if (editValues.btcChangePct) overrides.btcChangePct = editValues.btcChangePct;
+    } else if (domain === 'gold') {
+      if (editValues.goldOunce) overrides.goldOunce = editValues.goldOunce;
+      if (editValues.gold18k) overrides.gold18k = editValues.gold18k;
+      if (editValues.sekeEmami) overrides.sekeEmami = editValues.sekeEmami;
+    } else if (domain === 'bourse') {
+      if (editValues.tseIndex) overrides.tseIndex = editValues.tseIndex;
+      if (editValues.tseIndexChangePct) overrides.tseIndexChangePct = editValues.tseIndexChangePct;
+      if (editValues.retailVolume) overrides.retailVolume = editValues.retailVolume;
+    }
+
+    const result = applyManualOverridesToS1(overrides, extractedInputs, extracted13Sections);
+    setExtractedInputs(result.updatedInputs);
+    setExtracted13Sections(result.validated13Sections);
+    setAuditReport(result.auditReport);
+    setUpdatedFields((prev) => ({ ...prev, [domain]: 'edited' }));
+    setEditingDomain(null);
+  };
+
   useEffect(() => {
     if (isOpen) {
       setStage('idle');
@@ -108,6 +215,9 @@ export const RunNowModal: React.FC<RunNowModalProps> = ({
       setExtractedInputs(inputs);
       setExtracted13Sections(current13Sections || getDefault13SectionsData());
       setShowFullDetails(false);
+      setLoadingDomain(null);
+      setEditingDomain(null);
+      setUpdatedFields({});
     }
   }, [isOpen, inputs, current13Sections]);
 
@@ -142,16 +252,26 @@ export const RunNowModal: React.FC<RunNowModalProps> = ({
                 موتور استعلام، صحت‌سنجی و ممیزی زنده داده‌های مالی S1
               </h3>
               <p className="text-xs text-[#dbc2b0]/70">
-                استخراج برخط + ممیزی چشمی قیمت‌های شاخص قبل از ابلاغ به سیستم
+                استخراج برخط + امکان جستجوی مجدد اختصاصی و ویرایش دستی تک‌تک فیلدها
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-[#dbc2b0] hover:text-[#f2dfd3] hover:bg-[#322820] cursor-pointer transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsSourceMapOpen(true)}
+              className="text-xs bg-[#ffb77d]/15 hover:bg-[#ffb77d]/25 border border-[#ffb77d]/40 text-[#ffb77d] px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-all"
+              title="مشاهده نگاشت کامل ۱۰ گانه API و مراجع رسمی S1"
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">نقشه مراجع و APIها (Source Map)</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-[#dbc2b0] hover:text-[#f2dfd3] hover:bg-[#322820] cursor-pointer transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -279,13 +399,13 @@ export const RunNowModal: React.FC<RunNowModalProps> = ({
                   <ShieldCheck className="w-7 h-7 text-[#10b981] shrink-0" />
                   <div>
                     <div className="text-sm font-bold text-[#f2dfd3] flex items-center gap-2">
-                      <span>داده‌های زنده با موفقیت استخراج و محاسبه شدند</span>
+                      <span>داده‌های زنده استخراج و محاسبه شدند</span>
                       <span className="bg-[#10b981]/30 text-[#10b981] text-[10px] px-2.5 py-0.5 rounded-full font-mono-num font-bold">
-                        آماده کنترل و ممیزی دستی
+                        امکان کنترل اختصاصی هر فیلد
                       </span>
                     </div>
                     <div className="text-xs text-[#dbc2b0] mt-0.5">
-                      لطفاً قیمت‌های شاخص زیر را با تابلوهای لحظه‌ای خود تطبیق دهید و سپس اقدام به تأیید یا جستجوی مجدد نمایید.
+                      در صورت مشاهده هرگونه اختلاف با تابلو، از دکمه «سرچ مجدد 🔄» یا «ویرایش دستی ✏️» همان کارت استفاده کنید.
                     </div>
                   </div>
                 </div>
@@ -295,96 +415,366 @@ export const RunNowModal: React.FC<RunNowModalProps> = ({
                 </div>
               </div>
 
-              {/* 🎯 SPOTLIGHT BENCHMARK VERIFICATION CARDS */}
+              {/* 🎯 SPOTLIGHT BENCHMARK VERIFICATION CARDS WITH INDIVIDUAL RE-SEARCH & INLINE EDIT */}
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs font-bold text-[#ffb77d]">
                     <Eye className="w-4 h-4 text-[#ffb77d]" />
-                    <span>قیمت‌های شاخص جهت کنترل سریع و تأیید چشمی:</span>
+                    <span>قیمت‌های شاخص (با قابلیت استعلام مجدد یا ویرایش اختصاصی):</span>
                   </div>
                   <span className="text-[10px] text-[#dbc2b0]/70 font-mono-num">
-                    ۴ مرجع نظارتی همزمان
+                    محاسبه و کالیبراسیون آنی ریاضی
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   {/* Card 1: Tether USDT */}
-                  <div className="bg-[#1a120b] border-2 border-[#10b981]/40 hover:border-[#10b981] p-3.5 rounded-xl relative transition-all shadow-md">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <Coins className="w-4 h-4 text-[#10b981]" />
-                        <span className="text-xs font-bold text-[#f2dfd3]">قیمت لحظه‌ای تتر</span>
+                  <div className="bg-[#1a120b] border-2 border-[#10b981]/40 hover:border-[#10b981] p-3.5 rounded-xl relative transition-all shadow-md flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <Coins className="w-4 h-4 text-[#10b981]" />
+                          <span className="text-xs font-bold text-[#f2dfd3]">قیمت تتر (USDT)</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {updatedFields.tether && (
+                            <span className="text-[9px] bg-[#10b981]/20 text-[#10b981] px-1 rounded font-mono-num">
+                              {updatedFields.tether === 'searched' ? 'بروزرسانی' : 'ویرایش'}
+                            </span>
+                          )}
+                          <span className="text-[10px] font-mono-num text-[#10b981] bg-[#10b981]/15 px-1.5 py-0.5 rounded">
+                            {s1.usdtChangePct}
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-[10px] font-mono-num text-[#10b981] bg-[#10b981]/15 px-1.5 py-0.5 rounded">
-                        {s1.usdtChangePct}
-                      </span>
+
+                      {editingDomain === 'tether' ? (
+                        <div className="space-y-2 py-1">
+                          <div>
+                            <label className="text-[10px] text-[#dbc2b0]">نرخ تتر (تومان):</label>
+                            <input
+                              type="text"
+                              value={editValues.usdt}
+                              onChange={(e) => setEditValues({ ...editValues, usdt: e.target.value })}
+                              className="w-full bg-[#231a13] border border-[#10b981] text-[#10b981] font-mono-num text-sm px-2 py-1 rounded mt-0.5 outline-none"
+                              placeholder="مثلاً 199800"
+                              autoFocus
+                            />
+                          </div>
+                          <div className="flex gap-1.5 pt-1">
+                            <button
+                              onClick={() => handleSaveDomainEdit('tether')}
+                              className="flex-1 bg-[#10b981] text-[#052e16] text-[10px] font-bold py-1 rounded flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <Check className="w-3 h-3" /> ثبت
+                            </button>
+                            <button
+                              onClick={() => setEditingDomain(null)}
+                              className="px-2 bg-[#322820] text-[#dbc2b0] text-[10px] py-1 rounded cursor-pointer"
+                            >
+                              انصراف
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-base font-bold font-mono-num text-[#10b981]">
+                          {s1.usdt}
+                        </div>
+                      )}
                     </div>
-                    <div className="text-base font-bold font-mono-num text-[#10b981]">
-                      {s1.usdt}
-                    </div>
-                    <div className="mt-1.5 pt-1.5 border-t border-[#554336]/40 flex items-center justify-between text-[10px] text-[#dbc2b0]/80">
-                      <span>مرجع: نوبیتکس P2P</span>
-                      <span>دیروز: {s1.usdtYesterday}</span>
+
+                    <div className="mt-2 pt-2 border-t border-[#554336]/40 flex items-center justify-between">
+                      <div className="text-[10px] text-[#dbc2b0]/80">
+                        دیروز: {s1.usdtYesterday}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleRefreshDomain('tether')}
+                          disabled={loadingDomain === 'tether'}
+                          title="استعلام مجدد فقط برای تتر"
+                          className="p-1 rounded bg-[#322820] hover:bg-[#3d3127] text-[#10b981] text-[10px] transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${loadingDomain === 'tether' ? 'animate-spin' : ''}`} />
+                          <span className="text-[9px]">سرچ مجدد</span>
+                        </button>
+                        <button
+                          onClick={() => handleOpenEditDomain('tether')}
+                          title="ویرایش دستی نرخ تتر"
+                          className="p-1 rounded bg-[#322820] hover:bg-[#3d3127] text-[#dbc2b0] hover:text-[#f2dfd3] text-[10px] transition-colors cursor-pointer"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
                   {/* Card 2: Bitcoin BTC */}
-                  <div className="bg-[#1a120b] border-2 border-[#f59e0b]/40 hover:border-[#f59e0b] p-3.5 rounded-xl relative transition-all shadow-md">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <Zap className="w-4 h-4 text-[#f59e0b]" />
-                        <span className="text-xs font-bold text-[#f2dfd3]">قیمت لحظه‌ای بیت‌کوین</span>
+                  <div className="bg-[#1a120b] border-2 border-[#f59e0b]/40 hover:border-[#f59e0b] p-3.5 rounded-xl relative transition-all shadow-md flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <Zap className="w-4 h-4 text-[#f59e0b]" />
+                          <span className="text-xs font-bold text-[#f2dfd3]">بیت‌کوین (BTC)</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {updatedFields.crypto && (
+                            <span className="text-[9px] bg-[#f59e0b]/20 text-[#f59e0b] px-1 rounded font-mono-num">
+                              {updatedFields.crypto === 'searched' ? 'بروزرسانی' : 'ویرایش'}
+                            </span>
+                          )}
+                          <span className="text-[10px] font-mono-num text-[#10b981] bg-[#10b981]/15 px-1.5 py-0.5 rounded">
+                            {s3.btcChangePct}
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-[10px] font-mono-num text-[#10b981] bg-[#10b981]/15 px-1.5 py-0.5 rounded">
-                        {s3.btcChangePct}
-                      </span>
+
+                      {editingDomain === 'crypto' ? (
+                        <div className="space-y-2 py-1">
+                          <div>
+                            <label className="text-[10px] text-[#dbc2b0]">قیمت دلاری بیت‌کوین:</label>
+                            <input
+                              type="text"
+                              value={editValues.btcPrice}
+                              onChange={(e) => setEditValues({ ...editValues, btcPrice: e.target.value })}
+                              className="w-full bg-[#231a13] border border-[#f59e0b] text-[#f59e0b] font-mono-num text-sm px-2 py-1 rounded mt-0.5 outline-none"
+                              placeholder="مثلاً 79630"
+                              autoFocus
+                            />
+                          </div>
+                          <div className="flex gap-1.5 pt-1">
+                            <button
+                              onClick={() => handleSaveDomainEdit('crypto')}
+                              className="flex-1 bg-[#f59e0b] text-[#331c00] text-[10px] font-bold py-1 rounded flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <Check className="w-3 h-3" /> ثبت
+                            </button>
+                            <button
+                              onClick={() => setEditingDomain(null)}
+                              className="px-2 bg-[#322820] text-[#dbc2b0] text-[10px] py-1 rounded cursor-pointer"
+                            >
+                              انصراف
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-base font-bold font-mono-num text-[#f59e0b]">
+                          {s3.btcPrice}
+                        </div>
+                      )}
                     </div>
-                    <div className="text-base font-bold font-mono-num text-[#f59e0b]">
-                      {s3.btcPrice}
-                    </div>
-                    <div className="mt-1.5 pt-1.5 border-t border-[#554336]/40 flex items-center justify-between text-[10px] text-[#dbc2b0]/80">
-                      <span>مرجع: بایننس / CoinGecko</span>
-                      <span>دیروز: {s3.btcYesterday}</span>
+
+                    <div className="mt-2 pt-2 border-t border-[#554336]/40 flex items-center justify-between">
+                      <div className="text-[10px] text-[#dbc2b0]/80">
+                        دیروز: {s3.btcYesterday}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleRefreshDomain('crypto')}
+                          disabled={loadingDomain === 'crypto'}
+                          title="استعلام مجدد فقط برای بیت‌کوین"
+                          className="p-1 rounded bg-[#322820] hover:bg-[#3d3127] text-[#f59e0b] text-[10px] transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${loadingDomain === 'crypto' ? 'animate-spin' : ''}`} />
+                          <span className="text-[9px]">سرچ مجدد</span>
+                        </button>
+                        <button
+                          onClick={() => handleOpenEditDomain('crypto')}
+                          title="ویرایش دستی قیمت بیت‌کوین (مثلاً 79,630)"
+                          className="p-1 rounded bg-[#322820] hover:bg-[#3d3127] text-[#dbc2b0] hover:text-[#f2dfd3] text-[10px] transition-colors cursor-pointer"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
                   {/* Card 3: Gold (18k & Ounce) */}
-                  <div className="bg-[#1a120b] border-2 border-[#ffb77d]/40 hover:border-[#ffb77d] p-3.5 rounded-xl relative transition-all shadow-md">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <Activity className="w-4 h-4 text-[#ffb77d]" />
-                        <span className="text-xs font-bold text-[#f2dfd3]">طلای ۱۸ عیار / اونس</span>
+                  <div className="bg-[#1a120b] border-2 border-[#ffb77d]/40 hover:border-[#ffb77d] p-3.5 rounded-xl relative transition-all shadow-md flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <Activity className="w-4 h-4 text-[#ffb77d]" />
+                          <span className="text-xs font-bold text-[#f2dfd3]">اونس طلا / ۱۸ عیار</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {updatedFields.gold && (
+                            <span className="text-[9px] bg-[#ffb77d]/20 text-[#ffb77d] px-1 rounded font-mono-num">
+                              {updatedFields.gold === 'searched' ? 'بروزرسانی' : 'ویرایش'}
+                            </span>
+                          )}
+                          <span className="text-[10px] font-mono-num text-[#10b981] bg-[#10b981]/15 px-1.5 py-0.5 rounded">
+                            {s2.ounceChangePct}
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-[10px] font-mono-num text-[#10b981] bg-[#10b981]/15 px-1.5 py-0.5 rounded">
-                        {s1.gold18kChangePct}
-                      </span>
+
+                      {editingDomain === 'gold' ? (
+                        <div className="space-y-2 py-1">
+                          <div>
+                            <label className="text-[10px] text-[#dbc2b0]">اونس جهانی (دلار):</label>
+                            <input
+                              type="text"
+                              value={editValues.goldOunce}
+                              onChange={(e) => setEditValues({ ...editValues, goldOunce: e.target.value })}
+                              className="w-full bg-[#231a13] border border-[#ffb77d] text-[#ffb77d] font-mono-num text-sm px-2 py-1 rounded mt-0.5 outline-none"
+                              placeholder="مثلاً 4598"
+                              autoFocus
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-[#dbc2b0]">طلای ۱۸ عیار (تومان):</label>
+                            <input
+                              type="text"
+                              value={editValues.gold18k}
+                              onChange={(e) => setEditValues({ ...editValues, gold18k: e.target.value })}
+                              className="w-full bg-[#231a13] border border-[#554336] text-[#dbc2b0] font-mono-num text-xs px-2 py-1 rounded mt-0.5 outline-none"
+                              placeholder="مثلاً 21677400"
+                            />
+                          </div>
+                          <div className="flex gap-1.5 pt-1">
+                            <button
+                              onClick={() => handleSaveDomainEdit('gold')}
+                              className="flex-1 bg-[#ffb77d] text-[#2c1505] text-[10px] font-bold py-1 rounded flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <Check className="w-3 h-3" /> ثبت و محاسبه
+                            </button>
+                            <button
+                              onClick={() => setEditingDomain(null)}
+                              className="px-2 bg-[#322820] text-[#dbc2b0] text-[10px] py-1 rounded cursor-pointer"
+                            >
+                              انصراف
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="text-base font-bold font-mono-num text-[#ffb77d]">
+                            {s2.goldOunce}
+                          </div>
+                          <div className="text-[11px] font-mono-num text-[#dbc2b0] mt-0.5">
+                            ۱۸ عیار: {s1.gold18k}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-base font-bold font-mono-num text-[#ffb77d]">
-                      {s1.gold18k}
-                    </div>
-                    <div className="mt-1.5 pt-1.5 border-t border-[#554336]/40 flex items-center justify-between text-[10px] text-[#dbc2b0]/80">
-                      <span>اونس طلا: {s2.goldOunce}</span>
-                      <span>سکه: {s1.sekeEmami}</span>
+
+                    <div className="mt-2 pt-2 border-t border-[#554336]/40 flex items-center justify-between">
+                      <div className="text-[10px] text-[#dbc2b0]/80">
+                        حباب سکه: {s1.coinBubble}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleRefreshDomain('gold')}
+                          disabled={loadingDomain === 'gold'}
+                          title="استعلام مجدد فقط برای طلا و اونس"
+                          className="p-1 rounded bg-[#322820] hover:bg-[#3d3127] text-[#ffb77d] text-[10px] transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${loadingDomain === 'gold' ? 'animate-spin' : ''}`} />
+                          <span className="text-[9px]">سرچ مجدد</span>
+                        </button>
+                        <button
+                          onClick={() => handleOpenEditDomain('gold')}
+                          title="ویرایش دستی اونس طلا (مثلاً 4,598)"
+                          className="p-1 rounded bg-[#322820] hover:bg-[#3d3127] text-[#dbc2b0] hover:text-[#f2dfd3] text-[10px] transition-colors cursor-pointer"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
                   {/* Card 4: TSE Overall Index */}
-                  <div className="bg-[#1a120b] border-2 border-[#96ccff]/40 hover:border-[#96ccff] p-3.5 rounded-xl relative transition-all shadow-md">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <TrendingUp className="w-4 h-4 text-[#96ccff]" />
-                        <span className="text-xs font-bold text-[#f2dfd3]">شاخص کل بورس</span>
+                  <div className="bg-[#1a120b] border-2 border-[#96ccff]/40 hover:border-[#96ccff] p-3.5 rounded-xl relative transition-all shadow-md flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <TrendingUp className="w-4 h-4 text-[#96ccff]" />
+                          <span className="text-xs font-bold text-[#f2dfd3]">شاخص کل بورس</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {updatedFields.bourse && (
+                            <span className="text-[9px] bg-[#96ccff]/20 text-[#96ccff] px-1 rounded font-mono-num">
+                              {updatedFields.bourse === 'searched' ? 'بروزرسانی' : 'ویرایش'}
+                            </span>
+                          )}
+                          <span className="text-[10px] font-mono-num text-[#10b981] bg-[#10b981]/15 px-1.5 py-0.5 rounded">
+                            {s4.tseIndexChangePct}
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-[10px] font-mono-num text-[#10b981] bg-[#10b981]/15 px-1.5 py-0.5 rounded">
-                        {s4.tseIndexChangePct}
-                      </span>
+
+                      {editingDomain === 'bourse' ? (
+                        <div className="space-y-2 py-1">
+                          <div>
+                            <label className="text-[10px] text-[#dbc2b0]">شاخص کل بورس (واحد):</label>
+                            <input
+                              type="text"
+                              value={editValues.tseIndex}
+                              onChange={(e) => setEditValues({ ...editValues, tseIndex: e.target.value })}
+                              className="w-full bg-[#231a13] border border-[#96ccff] text-[#96ccff] font-mono-num text-sm px-2 py-1 rounded mt-0.5 outline-none"
+                              placeholder="مثلاً 6386576"
+                              autoFocus
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-[#dbc2b0]">درصد تغییر:</label>
+                            <input
+                              type="text"
+                              value={editValues.tseIndexChangePct}
+                              onChange={(e) => setEditValues({ ...editValues, tseIndexChangePct: e.target.value })}
+                              className="w-full bg-[#231a13] border border-[#554336] text-[#dbc2b0] font-mono-num text-xs px-2 py-1 rounded mt-0.5 outline-none"
+                              placeholder="+2.61%"
+                            />
+                          </div>
+                          <div className="flex gap-1.5 pt-1">
+                            <button
+                              onClick={() => handleSaveDomainEdit('bourse')}
+                              className="flex-1 bg-[#96ccff] text-[#002244] text-[10px] font-bold py-1 rounded flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <Check className="w-3 h-3" /> ثبت
+                            </button>
+                            <button
+                              onClick={() => setEditingDomain(null)}
+                              className="px-2 bg-[#322820] text-[#dbc2b0] text-[10px] py-1 rounded cursor-pointer"
+                            >
+                              انصراف
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="text-base font-bold font-mono-num text-[#96ccff]">
+                            {s4.tseIndex}
+                          </div>
+                          <div className="text-[11px] font-mono-num text-[#dbc2b0] mt-0.5">
+                            معاملات خرد: {s4.retailVolume}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-base font-bold font-mono-num text-[#96ccff]">
-                      {s4.tseIndex}
-                    </div>
-                    <div className="mt-1.5 pt-1.5 border-t border-[#554336]/40 flex items-center justify-between text-[10px] text-[#dbc2b0]/80">
-                      <span>معاملات خرد: {s4.retailTradeValue}</span>
-                      <span>مرجع: TSETMC</span>
+
+                    <div className="mt-2 pt-2 border-t border-[#554336]/40 flex items-center justify-between">
+                      <div className="text-[10px] text-[#dbc2b0]/80">
+                        پول حقیقی: {s4.realMoneyFlow}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleRefreshDomain('bourse')}
+                          disabled={loadingDomain === 'bourse'}
+                          title="استعلام مجدد فقط برای بورس تهران"
+                          className="p-1 rounded bg-[#322820] hover:bg-[#3d3127] text-[#96ccff] text-[10px] transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${loadingDomain === 'bourse' ? 'animate-spin' : ''}`} />
+                          <span className="text-[9px]">سرچ مجدد</span>
+                        </button>
+                        <button
+                          onClick={() => handleOpenEditDomain('bourse')}
+                          title="ویرایش دستی شاخص بورس"
+                          className="p-1 rounded bg-[#322820] hover:bg-[#3d3127] text-[#dbc2b0] hover:text-[#f2dfd3] text-[10px] transition-colors cursor-pointer"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -437,7 +827,7 @@ export const RunNowModal: React.FC<RunNowModalProps> = ({
                         <span className="text-[#10b981] text-[10px] font-mono-num">🟢 VERIFIED</span>
                       </div>
                       <p className="text-[11px] text-[#dbc2b0]/90 leading-relaxed">
-                        استخراج از <strong>TSETMC</strong>: شاخص کل {s4.tseIndex}، معاملات خرد {s4.retailTradeValue}، ورود پول حقیقی {s4.realMoneyFlow}.
+                        استخراج از <strong>TSETMC</strong>: شاخص کل {s4.tseIndex}، معاملات خرد {s4.retailVolume}، ورود پول حقیقی {s4.realMoneyFlow}.
                       </p>
                     </div>
 
@@ -492,10 +882,10 @@ export const RunNowModal: React.FC<RunNowModalProps> = ({
                 <button
                   onClick={handleStartRun}
                   className="bg-[#f59e0b]/15 hover:bg-[#f59e0b]/25 border border-[#f59e0b]/60 text-[#f59e0b] py-3.5 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer shrink-0"
-                  title="در صورت عدم تطبیق ارقام یا نیاز به بروزرسانی مجدد"
+                  title="در صورت عدم تطبیق ارقام یا نیاز به بروزرسانی مجدد همه حوزه‌ها"
                 >
                   <RotateCcw className="w-4 h-4 shrink-0" />
-                  <span>عدم تأیید و جستجوی مجدد</span>
+                  <span>عدم تأیید و جستجوی مجدد کلی</span>
                 </button>
 
                 {/* 3. Cancel */}
@@ -510,6 +900,12 @@ export const RunNowModal: React.FC<RunNowModalProps> = ({
           )}
         </div>
       </div>
+
+      {/* S1 Source Map Modal */}
+      <S1SourceMapModal
+        isOpen={isSourceMapOpen}
+        onClose={() => setIsSourceMapOpen(false)}
+      />
     </div>
   );
 };

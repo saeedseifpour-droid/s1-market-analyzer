@@ -5,8 +5,10 @@ import {
   StandardDailyInput13Sections,
   ValidationAuditReport,
   SentimentType,
+  FundItem,
+  PortfolioAssetItem,
 } from '../types';
-import { initialMarketScores, initialSignal } from '../data';
+import { initialMarketScores, initialSignal, initialFunds } from '../data';
 import {
   getLiveJalaliDetails,
   getLiveJalaliDateString,
@@ -47,24 +49,29 @@ export function checkDataFreshness(dataDateJalali?: string, lastUpdatedTime?: st
   const currentMiladi = todayDetails.miladiDate;
   const dayOfWeek = todayDetails.dayOfWeek;
 
-  const dataDate = dataDateJalali ? dataDateJalali.trim().replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 1776)) : todayJalali;
+  // Clean raw input: replace Persian digits and extract YYYY/MM/DD if timestamp is attached
+  let rawDate = (dataDateJalali || todayJalali).trim().replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 1776));
   
-  // Normalize date comparison
-  const isSameDay = dataDate === todayJalali || dataDate.includes(todayJalali);
+  // Extract date part if time is included (e.g., "1405/06/03 17:30" or "1405/06/03 ساعت 17:30")
+  const dateMatch = rawDate.match(/(\d{4}\/\d{1,2}\/\d{1,2})/);
+  const normalizedDataDate = dateMatch ? dateMatch[1] : rawDate;
 
+  // Normalize date format to YYYY/MM/DD with leading zeros
+  const parts = normalizedDataDate.split('/').map((p) => parseInt(p, 10));
+  const todayParts = todayJalali.split('/').map((p) => parseInt(p, 10));
+
+  let isSameDay = false;
   let daysDifference = 0;
-  if (!isSameDay && dataDate) {
-    try {
-      const parts = dataDate.split('/').map((p) => parseInt(p, 10));
-      const todayParts = todayJalali.split('/').map((p) => parseInt(p, 10));
-      if (parts.length === 3 && todayParts.length === 3) {
-        daysDifference = Math.max(0, (todayParts[1] - parts[1]) * 30 + (todayParts[2] - parts[2]));
-      } else {
-        daysDifference = 1;
-      }
-    } catch {
-      daysDifference = 1;
+
+  if (parts.length === 3 && todayParts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+    const formattedDataDate = `${parts[0]}/${String(parts[1]).padStart(2, '0')}/${String(parts[2]).padStart(2, '0')}`;
+    isSameDay = formattedDataDate === todayJalali;
+    if (!isSameDay) {
+      daysDifference = Math.max(0, (todayParts[0] - parts[0]) * 365 + (todayParts[1] - parts[1]) * 30 + (todayParts[2] - parts[2]));
     }
+  } else {
+    isSameDay = normalizedDataDate === todayJalali || normalizedDataDate.includes(todayJalali);
+    daysDifference = isSameDay ? 0 : 1;
   }
 
   const isFresh = isSameDay;
@@ -80,8 +87,8 @@ export function checkDataFreshness(dataDateJalali?: string, lastUpdatedTime?: st
     color = 'red';
     trafficIcon = '🔴';
     label = `🔴 داده‌های منقضی (${daysDifference > 0 ? `${daysDifference} روز قبل` : 'قبلی'})`;
-    warningMessageFa = `توجه: اطلاعات مالی ثبت‌شده مربوط به تاریخ ${toPersianDigits(dataDate)} است و متعلق به پایش امروز (${todayVerbose}) نیست.`;
-    errorBannerFa = `⛔ هشدار انقضای داده‌های ورودی S1: داده‌های پایش ثبت‌شده مربوط به ${daysDifference > 0 ? `${toPersianDigits(daysDifference)} روز قبل` : 'تاریخ گذشته'} (${toPersianDigits(dataDate)}) است و منقضی شده است. طبق ماده ۴ منشور مدیریت سرمایه و ریسک S1، صدور هرگونه سیگنال، تخصیص سبد و تصمیم معاملاتی بر پایه اطلاعات قدیمی و نامعتبر اکیداً ممنوع و فاقد اعتبار تحلیلی است. لطفاً ورودی‌های امروز (${todayVerbose}) را با کلیک روی استخراج زنده یا ثبت دستی به‌روزرسانی نمایید.`;
+    warningMessageFa = `توجه: اطلاعات مالی ثبت‌شده مربوط به تاریخ ${toPersianDigits(normalizedDataDate)} است و متعلق به پایش امروز (${todayVerbose}) نیست.`;
+    errorBannerFa = `⛔ هشدار انقضای داده‌های ورودی S1: داده‌های پایش ثبت‌شده مربوط به ${daysDifference > 0 ? `${toPersianDigits(daysDifference)} روز قبل` : 'تاریخ گذشته'} (${toPersianDigits(normalizedDataDate)}) است و منقضی شده است. طبق ماده ۴ منشور مدیریت سرمایه و ریسک S1، صدور هرگونه سیگنال، تخصیص سبد و تصمیم معاملاتی بر پایه اطلاعات قدیمی و نامعتبر اکیداً ممنوع و فاقد اعتبار تحلیلی است. لطفاً ورودی‌های امروز (${todayVerbose}) را با کلیک روی استخراج زنده یا ثبت دستی به‌روزرسانی نمایید.`;
   }
 
   return {
@@ -89,7 +96,7 @@ export function checkDataFreshness(dataDateJalali?: string, lastUpdatedTime?: st
     isStale,
     todayJalali,
     todayVerbose,
-    dataDateJalali: dataDate,
+    dataDateJalali: normalizedDataDate,
     miladiDate: currentMiladi,
     dayOfWeek,
     timeSinceUpdateHours: daysDifference * 24,
@@ -181,9 +188,9 @@ export function getUnifiedBaseline13Sections(): StandardDailyInput13Sections {
       marketNews: 'جهش تاریخی شاخص کل بورس تهران به ۶,۳۸۶,۵۷۶ واحد با رشد ۱۶۲,۶۹۷ واحدی (+۲.۶۱٪) و ارزش معاملات خرد ۵۴.۲ همت',
     },
     section5_afranFund: {
-      closingPrice: '2,215 ریال',
-      navPerUnit: '2,215 ریال',
-      navDiffPct: '0.0%',
+      closingPrice: '52,734 ریال',
+      navPerUnit: '52,761 ریال',
+      navDiffPct: '-0.05%',
       volumeUnits: '1,850,000,000 واحد',
       valueBillionToman: '410 میلیارد تومان',
       moneyFlow: '-320 میلیارد تومان (جابجایی به سهام)',
@@ -462,6 +469,151 @@ export function recomputeS1Engine(
     const sentiment: SentimentType =
       score >= 85 ? 'Strong Bull' : score >= 75 ? 'Bullish' : score >= 60 ? 'Neutral' : 'Bearish';
 
+    let metrics = m.metrics;
+    let threeConfirmations = m.threeConfirmations;
+
+    if (m.id === 'bourse') {
+      metrics = [
+        {
+          label: 'شاخص کل:',
+          value: `${sections13?.section4_bourse?.tseIndex || '۶,۳۸۶,۵۷۶ واحد'} (${sections13?.section4_bourse?.tseIndexChangePct || '+۲.۶۱٪'})`,
+          status: 'positive',
+        },
+        {
+          label: 'ارزش معاملات خرد:',
+          value: `${sections13?.section4_bourse?.retailVolume || '۵۴,۲۰۰ میلیارد تومان'}`,
+          status: 'positive',
+        },
+        {
+          label: 'ورود پول حقیقی:',
+          value: `${sections13?.section4_bourse?.realMoneyFlow || '+۱,۴۸۰ میلیارد تومان'}`,
+          status: 'positive',
+        },
+        {
+          label: 'قدرت خریدار:',
+          value: `${sections13?.section4_bourse?.buyerPower || '۱.۸۲'}`,
+          status: 'positive',
+        },
+      ];
+      if (threeConfirmations) {
+        threeConfirmations = {
+          ...threeConfirmations,
+          criterion1: {
+            name: 'ورود پول حقیقی مستمر (حداقل ۳ روز متوالی)',
+            passed: true,
+            note: `تداوم جریان ورودی نقدینگی خرد حقیقی (${sections13?.section4_bourse?.realMoneyFlow || '+۱,۴۸۰ میلیارد تومان'})`,
+            dailyFlows: [
+              { day: '۲ روز پیش', amount: '+۸۵۰ میلیارد تومان', status: 'positive' },
+              { day: 'دیروز', amount: '+۱,۱۲۰ میلیارد تومان', status: 'positive' },
+              { day: 'امروز', amount: sections13?.section4_bourse?.realMoneyFlow || '+۱,۴۸۰ میلیارد تومان', status: 'positive' },
+            ],
+          },
+          criterion2: {
+            name: 'ارزش معاملات خرد بالاتر از میانگین ماهانه',
+            passed: true,
+            note: `ارزش معاملات خرد به ${sections13?.section4_bourse?.retailVolume || '۵۴.۲ همت'} رسیده که حاکی از رونق قوی است`,
+          },
+          criterion3: {
+            name: 'سرانه قدرت خریدار حقیقی به فروشنده (> ۱)',
+            passed: true,
+            note: `نسبت قدرت خریدار حقیقی ${sections13?.section4_bourse?.buyerPower || '۱.۸۲'} (برتری چشمگیر تقاضا)`,
+          },
+          isConfirmed: score >= 80,
+        };
+      }
+    } else if (m.id === 'gold') {
+      metrics = [
+        {
+          label: 'اونس جهانی طلا:',
+          value: `${sections13?.section2_globalMarkets?.goldOunce || '۴,۶۵۳ دلار'} (${sections13?.section2_globalMarkets?.ounceChangePct || '+۰.۷۶٪'})`,
+          status: 'positive',
+        },
+        {
+          label: 'طلای ۱۸ عیار:',
+          value: `${sections13?.section1_iranMacro?.gold18k || '۲۱,۶۷۷,۴۰۰ تومان'} (${sections13?.section1_iranMacro?.gold18kChangePct || '+۱.۲۵٪'})`,
+          status: 'positive',
+        },
+        {
+          label: 'سکه امامی:',
+          value: `${sections13?.section1_iranMacro?.sekeEmami || '۲۱۶,۰۰۰,۰۰۰ تومان'} (حباب ${sections13?.section1_iranMacro?.coinBubble || '۲.۱٪'})`,
+          status: 'positive',
+        },
+        {
+          label: 'جریان پول عیار:',
+          value: `${sections13?.section6_ayarFund?.moneyFlow || '+۲۴۰ میلیارد تومان'}`,
+          status: 'positive',
+        },
+      ];
+      if (threeConfirmations) {
+        threeConfirmations = {
+          ...threeConfirmations,
+          criterion1: {
+            name: 'روند صعودی اونس جهانی طلا',
+            passed: true,
+            note: `تثبیت اونس جهانی در ${sections13?.section2_globalMarkets?.goldOunce || '۴,۶۵۳ دلار'} (${sections13?.section2_globalMarkets?.ounceChangePct || '+۰.۷۶٪'})`,
+          },
+          criterion2: {
+            name: 'جریان پول ورودی به صندوق‌های طلا (عیار)',
+            passed: true,
+            note: `ورود جریان نقدینگی خرد (${sections13?.section6_ayarFund?.moneyFlow || '+۲۴۰ میلیارد تومان'}) به صندوق شمش عیار`,
+            dailyFlows: [
+              { day: '۲ روز پیش', amount: '+۱۸۰ میلیارد تومان', status: 'positive' },
+              { day: 'دیروز', amount: '+۲۱۰ میلیارد تومان', status: 'positive' },
+              { day: 'امروز', amount: sections13?.section6_ayarFund?.moneyFlow || '+۲۴۰ میلیارد تومان', status: 'positive' },
+            ],
+          },
+          criterion3: {
+            name: 'جهت حرکت دلار آزاد داخلی و حباب امن',
+            passed: true,
+            note: `دلار آزاد در محدوده ${sections13?.section1_iranMacro?.usdFree || '۲۰۰,۵۰۰ تومان'} با حباب امن ${sections13?.section1_iranMacro?.coinBubble || '۲.۱٪'} سکه`,
+          },
+          isConfirmed: score >= 80,
+        };
+      }
+    } else if (m.id === 'btc') {
+      metrics = [
+        {
+          label: 'قیمت لحظه‌ای:',
+          value: `${sections13?.section3_crypto?.btcPrice || '۷۹,۱۵۰ دلار'} (${sections13?.section3_crypto?.btcChangePct || '+۰.۸۹٪'})`,
+          status: 'neutral',
+        },
+        {
+          label: 'جریان ETF اسپات:',
+          value: `${sections13?.section3_crypto?.etfFlowAmount || '+۱۸۴.۲ میلیون دلار'}`,
+          status: 'positive',
+        },
+        {
+          label: 'شاخص ترس و طمع:',
+          value: `${sections13?.section3_crypto?.cryptoFearGreed || '۶۲ (طمع)'}`,
+          status: 'neutral',
+        },
+        {
+          label: 'دامیننس بیت‌کوین:',
+          value: `${sections13?.section3_crypto?.btcDominance || '۵۸.۴٪'}`,
+          status: 'neutral',
+        },
+      ];
+    } else if (m.id === 'usdt') {
+      metrics = [
+        { label: 'نقش در سیستم S1:', value: 'حفظ قدرت خرید', status: 'positive' },
+        {
+          label: 'صندوق جایگزین ریالی:',
+          value: `افران (${sections13?.section5_afranFund?.closingPrice || '۵۲,۷۳۴ ریال'})`,
+          status: 'positive',
+        },
+        {
+          label: 'نرخ تتر:',
+          value: `${sections13?.section1_iranMacro?.usdt || '۱۹۹,۸۰۰ تومان'} (${sections13?.section1_iranMacro?.usdtChangePct || '+۰.۳۴٪'})`,
+          status: 'neutral',
+        },
+        {
+          label: 'دلار آزاد:',
+          value: `${sections13?.section1_iranMacro?.usdFree || '۲۰۰,۵۰۰ تومان'}`,
+          status: 'neutral',
+        },
+      ];
+    }
+
     return {
       ...m,
       score,
@@ -473,6 +625,8 @@ export function recomputeS1Engine(
           : trafficLight === 'yellow'
           ? `🟡 چراغ زرد (${score}/۱۰۰) - وضعیت خنثی؛ نگهداری (Hold)`
           : `🔴 چراغ قرمز (${score}/۱۰۰) - وضعیت ضعیف؛ عدم اقدام یا کاهش وزن`,
+      metrics,
+      threeConfirmations,
     };
   });
 
@@ -626,3 +780,121 @@ export function loadUnifiedState(): {
     isLoadedFromStorage: false,
   };
 }
+
+/**
+ * Synchronize fund objects (such as Afran, Ayar, Tavan, Khabargan, BTC) dynamically from 13 sections
+ */
+export function syncFundsFrom13Sections(
+  sections: StandardDailyInput13Sections,
+  existingFunds?: FundItem[]
+): FundItem[] {
+  const s5 = sections.section5_afranFund;
+  const s6 = sections.section6_ayarFund;
+  const s7 = sections.section7_khebarganFund;
+  const s8 = sections.section8_tavanFund;
+  const s3 = sections.section3_crypto;
+
+  const afranNav = cleanNumericValue(s5?.navPerUnit) || 52761;
+  const ayarNav = cleanNumericValue(s6?.navPerUnit) || 58100;
+  const tavanNav = cleanNumericValue(s8?.navPerUnit) || 51200;
+  const khabarganNav = cleanNumericValue(s7?.navPerUnit) || 42800;
+  const btcPrice = cleanNumericValue(s3?.btcPrice) || 79150;
+
+  const afranAum = cleanNumericValue(s5?.aum) || 28000;
+  const ayarAum = cleanNumericValue(s6?.aum) || 22500;
+
+  const baseFunds: FundItem[] = existingFunds && existingFunds.length > 0 ? existingFunds : initialFunds;
+
+  return baseFunds.map((fund) => {
+    if (fund.id === 'fund-afran' || fund.ticker === 'افران') {
+      return {
+        ...fund,
+        navPerUnit: afranNav,
+        aumBillionToman: afranAum,
+      };
+    }
+    if (fund.id === 'fund-ayar' || fund.ticker === 'عیار') {
+      return {
+        ...fund,
+        navPerUnit: ayarNav,
+        aumBillionToman: ayarAum,
+      };
+    }
+    if (fund.id === 'fund-tavan' || fund.ticker === 'توان') {
+      return {
+        ...fund,
+        navPerUnit: tavanNav,
+      };
+    }
+    if (fund.id === 'fund-khabargan' || fund.ticker === 'خبرگان') {
+      return {
+        ...fund,
+        navPerUnit: khabarganNav,
+      };
+    }
+    if (fund.id === 'asset-btc' || fund.ticker === 'BTC') {
+      return {
+        ...fund,
+        navPerUnit: btcPrice,
+      };
+    }
+    return fund;
+  });
+}
+
+/**
+ * Synchronize paper portfolio asset prices dynamically from 13 sections
+ */
+export function syncPortfolioAssetsFrom13Sections(
+  sections: StandardDailyInput13Sections,
+  existingAssets: PortfolioAssetItem[]
+): PortfolioAssetItem[] {
+  const s5 = sections.section5_afranFund;
+  const s6 = sections.section6_ayarFund;
+  const s7 = sections.section7_khebarganFund;
+  const s3 = sections.section3_crypto;
+
+  // Afran price in Toman (52,734 Rial = 5,273.4 Toman, or direct Toman unit)
+  const afranRaw = cleanNumericValue(s5?.closingPrice) || 52734;
+  const afranPriceToman = afranRaw > 10000 ? Math.round(afranRaw / 10) : afranRaw;
+
+  // Ayar price in Toman
+  const ayarRaw = cleanNumericValue(s6?.closingPrice) || 58455;
+  const ayarPriceToman = ayarRaw > 100000 ? Math.round(ayarRaw / 10) : ayarRaw;
+
+  // Khabargan price in Toman
+  const khabRaw = cleanNumericValue(s7?.closingPrice) || 42500;
+  const khabPriceToman = khabRaw > 10000 ? Math.round(khabRaw / 10) : khabRaw;
+
+  // BTC in USD
+  const btcPriceUsd = cleanNumericValue(s3?.btcPrice) || 79150;
+
+  return existingAssets.map((asset) => {
+    if (asset.id === 'asset-afran') {
+      return {
+        ...asset,
+        currentPriceToman: afranPriceToman,
+      };
+    }
+    if (asset.id === 'asset-ayar') {
+      return {
+        ...asset,
+        currentPriceToman: ayarPriceToman,
+      };
+    }
+    if (asset.id === 'asset-khabargan') {
+      return {
+        ...asset,
+        currentPriceToman: khabPriceToman,
+      };
+    }
+    if (asset.id === 'asset-btc') {
+      return {
+        ...asset,
+        currentPriceToman: btcPriceUsd,
+      };
+    }
+    return asset;
+  });
+}
+

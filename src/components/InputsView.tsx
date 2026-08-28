@@ -31,6 +31,7 @@ import {
 import { initialDailyChecklist } from '../data';
 import { fetchLiveMarketDataViaGemini, LiveExtractionResult } from '../utils/marketDataLive';
 import { checkDataFreshness, resetToFreshMarketState } from '../utils/s1DataEngine';
+import { S1SourceMapModal } from './S1SourceMapModal';
 
 interface InputsViewProps {
   inputs: InputMetric[];
@@ -58,6 +59,7 @@ export const InputsView: React.FC<InputsViewProps> = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isAiExtracting, setIsAiExtracting] = useState<boolean>(false);
   const [copiedAll, setCopiedAll] = useState<boolean>(false);
+  const [isSourceMapOpen, setIsSourceMapOpen] = useState<boolean>(false);
 
   const categories = [
     { id: 'all', label: 'همه ورودی‌ها (۴۱ پارامتر)' },
@@ -423,6 +425,15 @@ export const InputsView: React.FC<InputsViewProps> = ({
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setIsSourceMapOpen(true)}
+            className="bg-[#ffb77d]/15 hover:bg-[#ffb77d]/25 border border-[#ffb77d]/40 text-[#ffb77d] px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+            title="مشاهده نگاشت کامل ۱۰ گانه API و مراجع رسمی S1"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span>نقشه مراجع و APIها (Source Map)</span>
+          </button>
+
+          <button
             onClick={handleCopyMarkdownTable}
             className="bg-[#271e16] text-[#dbc2b0] border border-[#554336] px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 hover:text-[#f2dfd3] transition-all cursor-pointer"
           >
@@ -586,6 +597,11 @@ export const InputsView: React.FC<InputsViewProps> = ({
           </table>
         </div>
       </div>
+      {/* S1 Source Map Modal */}
+      <S1SourceMapModal
+        isOpen={isSourceMapOpen}
+        onClose={() => setIsSourceMapOpen(false)}
+      />
     </div>
   );
 };
