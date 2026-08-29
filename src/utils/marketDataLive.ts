@@ -173,6 +173,10 @@ export async function fetchSingleDomainLive(
             tseEqualWeight: json.data.tseEqualWeight || '1,802,773',
             retailVolume: json.data.tseRetailVolumeBillionToman || '54,200',
             realMoneyFlow: json.data.tseRealMoneyFlowBillionToman || '+1,480',
+            section5_afranFund: json.data.section5_afranFund,
+            section6_ayarFund: json.data.section6_ayarFund,
+            section7_khebarganFund: json.data.section7_khebarganFund,
+            section8_tavanFund: json.data.section8_tavanFund,
           };
         }
 

@@ -267,6 +267,7 @@ async function startServer() {
     directApiData.coinBubblePct = '2.1%';
 
     // -------------------------------------------------------------
+    // -------------------------------------------------------------
     // LAYER 2: AI SYNTHESIS & S1 EXECUTIVE COMMENTARY (GEMINI LLM)
     // -------------------------------------------------------------
     let geminiData: Record<string, any> = {};
@@ -284,23 +285,56 @@ async function startServer() {
         });
 
         // Feed deterministic numbers directly into Gemini so it validates formulas without guessing numbers
-        const prompt = `شما هوش مصنوعی تحلیلی و ممیزی سیستم مدیریت ریسک و سرمایه S1 (نسخه ۱.۳) هستید.
-تاریخ پایش: ${todayVerbose} مصادف با ${miladiDate}.
+        const prompt = `شما هوش مصنوعی تحلیلی، ممیزی و پایش سیستم مدیریت ریسک و سرمایه S1 (نسخه ۱.۳) هستید.
+تاریخ امروز: ${todayVerbose} مصادف با ${miladiDate}.
 
-ارقام قطعی و استخراج‌شده برخط از APIهای مستقیم (Layer 1):
+ارقام قطعی لایه اول (آفلاین / موقت):
 - نرخ تتر (نوبیتکس): ${directApiData.usdtToman || verifiedLiveMarketBaseline.usdtToman} تومان
 - نرخ دلار آزاد: ${directApiData.usdFreeToman || verifiedLiveMarketBaseline.usdFreeToman} تومان
-- اونس جهانی طلا (Yahoo Finance): ${directApiData.goldOunceUsd || verifiedLiveMarketBaseline.goldOunceUsd} دلار
-- طلای ۱۸ عیار محاسبه‌شده S1: ${directApiData.gold18kGramToman} تومان
-- سکه امامی محاسبه‌شده S1: ${directApiData.goldCoinEmamiToman} تومان (حباب: ۲.۱٪)
-- بیت‌کوین (بایننس): ${directApiData.btcPriceUsd || verifiedLiveMarketBaseline.btcPriceUsd} دلار (${directApiData.btcChangePct || '+1.50%'})
-- شاخص کل بورس تهران (TSETMC): ${verifiedLiveMarketBaseline.tseIndex} (+۲.۶۱٪)
+- اونس جهانی طلا: ${directApiData.goldOunceUsd || verifiedLiveMarketBaseline.goldOunceUsd} دلار
+- طلای ۱۸ عیار S1: ${directApiData.gold18kGramToman} تومان
+- سکه امامی S1: ${directApiData.goldCoinEmamiToman} تومان
+- بیت‌کوین (بایننس): ${directApiData.btcPriceUsd || verifiedLiveMarketBaseline.btcPriceUsd} دلار
 
-لطفاً یک خلاصه تحلیلی جامع و خوش‌ساخت (یک پاراگراف) از وضعیت کلی بازارها به زبان فارسی ارائه دهید و در قالب JSON زیر برگردانید:
+مأموریت حیاتی شما:
+با استفاده از ابزار Google Search Grounding، اطلاعات مالی کاملاً واقعی، زنده و به‌روز امروز (${todayVerbose}) بازار بورس تهران و صندوق‌های کلیدی را از وب فارسی و مراجع رسمی بورس (نظیر TSETMC، فیپیران، بورس‌ویو، وب‌سایت اتحادیه طلا یا رسانه‌های معتبر مالی ایران) جستجو و استخراج نمایید. تحت هیچ شرایطی عدد خیالی یا قدیمی حدس نزنید. اگر اطلاعات امروز هنوز منتشر نشده، آخرین روز معاملاتی قبل را ملاک قرار دهید.
 
+شاخص‌ها و صندوق‌هایی که باید زنده جستجو و استخراج شوند:
+۱. شاخص کل بورس تهران (TSE Index): مقدار کنونی شاخص کل بورس به صورت عددی با ویرگول (مثلاً ۶,۲۲۳,۸۷۹) و درصد تغییرات امروز.
+۲. ارزش معاملات خرد بورس تهران (Retail Volume) به میلیارد تومان یا همت (مثلاً ۵۴,۲۰۰ میلیارد تومان).
+۳. ورود/خروج پول حقیقی به بورس تهران (Real Money Flow) به میلیارد تومان یا همت با علامت مثبت یا منفی (مثلاً +۱,۴۸۰ میلیارد تومان).
+۴. صندوق درآمد ثابت افران (AFRAN): قیمت پایانی زنده امروز به ریال (مثلاً ۵۲,۷۳۴ ریال) و NAV ابطال دقیق امروز به ریال (مثلاً ۵۲,۷۶۱ ریال) و درصد انحراف قیمت از NAV (مثلاً -۰.۰۵٪). معمولاً قیمت پایانی افران در محدوده ۵,۰۰۰ الی ۵,۵۰۰ تومان (۵۰,۰۰۰ الی ۵۵,۰۰۰ ریال) است. لطفاً مقدار دقیق ثبت شده را استخراج کنید.
+۵. صندوق شمش طلای عیار (AYAR): قیمت پایانی زنده امروز به تومان (مثلاً ۵۸,۴۵۵ تومان) و NAV ابطال دقیق امروز به تومان (مثلاً ۵۸,۱۰۰ تومان) و درصد انحراف (مثلاً +۰.۶۱٪).
+۶. صندوق اهرمی توان (TAVAN): قیمت پایانی زنده امروز به ریال یا تومان و درصد تغییرات امروز آن.
+۷. صندوق سهامی خبرگان (KHEBARGAN): قیمت پایانی امروز و تغییرات درصد آن.
+
+خروجی خود را دقیقاً و صرفاً در قالب یک شیء JSON استاندارد بدون هیچ توضیح اضافی دیگری به شکل زیر برگردانید:
 {
   "marketSummaryFa": "تحلیل مدیریتی روند کلی بازارها و جریان نقدینگی بر اساس ارقام واقعی روز",
-  "macroAnalysis": "نکات کلیدی اخبار اقتصادی و تصمیمات پولی امروز"
+  "macroAnalysis": "نکات کلیدی اخبار اقتصادی و تصمیمات پولی امروز",
+  "tseIndex": "مقدار شاخص کل بورس به صورت عددی با ویرگول (مثلاً ۶,۲۲۳,۸۷۹)",
+  "tseIndexChangePct": "درصد تغییر شاخص کل امروز (مثلاً +۱.۲۵٪)",
+  "tseRetailVolumeBillionToman": "ارزش معاملات خرد امروز به عدد میلیارد تومان (مثلاً ۴,۵۰۰ یا ۵۴,۲۰۰)",
+  "tseRealMoneyFlowBillionToman": "ورود/خروج پول حقیقی امروز به عدد میلیارد تومان با علامت مثبت یا منفی (مثلاً -۱۲۰ یا +۱,۴۸۰)",
+  "section5_afranFund": {
+    "closingPrice": "قیمت پایانی دقیق امروز افران به ریال (مثلاً ۵۲,۷۳۴ ریال)",
+    "navPerUnit": "NAV ابطال دقیق امروز افران به ریال (مثلاً ۵۲,۷۶۱ ریال)",
+    "navDiffPct": "درصد اختلاف قیمت و NAV ابطال (مثلاً -۰.۰۵٪)"
+  },
+  "section6_ayarFund": {
+    "closingPrice": "قیمت پایانی دقیق امروز عیار به تومان (مثلاً ۵۸,۴۵۵ تومان)",
+    "navPerUnit": "NAV ابطال دقیق امروز عیار به تومان (مثلاً ۵۸,۱۰۰ تومان)",
+    "navDiffPct": "درصد اختلاف قیمت و NAV ابطال (مثلاً +۰.۶۱٪)"
+  },
+  "section7_khebarganFund": {
+    "closingPrice": "قیمت پایانی دقیق امروز خبرگان به ریال (مثلاً ۴۲,۵۰۰ ریال)",
+    "changePct": "درصد تغییرات امروز خبرگان (مثلاً +۲.۱۶٪)",
+    "navPerUnit": "NAV ابطال امروز خبرگان به ریال"
+  },
+  "section8_tavanFund": {
+    "closingPrice": "قیمت پایانی دقیق امروز توان به ریال",
+    "changePct": "درصد تغییرات امروز توان"
+  }
 }`;
 
         let responseText = '';
@@ -313,14 +347,21 @@ async function startServer() {
               contents: prompt,
               config: {
                 temperature: 0.2,
+                tools: [{ googleSearch: {} }],
               },
             });
             if (response && response.text) {
               responseText = response.text;
+              
+              // Verify and record grounding
+              const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+              if (chunks && chunks.length > 0) {
+                sourcesChecked.push(`Google Search Grounding (${chunks.length} منبع برخط بورس)`);
+              }
               break;
             }
-          } catch {
-            // If candidate model is temporarily experiencing high demand (503) or unavailable, try next candidate
+          } catch (modelErr) {
+            // Try next model if one is unavailable
           }
         }
 
