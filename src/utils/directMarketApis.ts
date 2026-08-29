@@ -140,17 +140,17 @@ export async function fetchNobitexTether(): Promise<{
  */
 export async function fetchLiveCrypto(): Promise<{
   btcPriceUsd: string;
-  btcYesterday: string;
-  btcChangePct: string;
-  ethPriceUsd: string;
-  ethChangePct: string;
+  btcYesterday: string | null;
+  btcChangePct: string | null;
+  ethPriceUsd: string | null;
+  ethChangePct: string | null;
   sources: string[];
 } | null> {
   const sources: string[] = [];
   let btcPrice = '';
-  let btcYesterday = '';
+  let btcYesterday: string | null = null;
   let btcChange = '';
-  let ethPrice = '';
+  let ethPrice: string | null = null;
   let ethChange = '';
 
   // 1. Try Binance Public API
@@ -219,10 +219,10 @@ export async function fetchLiveCrypto(): Promise<{
   if (btcPrice) {
     return {
       btcPriceUsd: btcPrice,
-      btcYesterday: btcYesterday || '78,450',
-      btcChangePct: btcChange || '+0.89%',
-      ethPriceUsd: ethPrice || '2,620',
-      ethChangePct: ethChange || '+1.85%',
+      btcYesterday: btcYesterday || null,
+      btcChangePct: btcChange || null,
+      ethPriceUsd: ethPrice || null,
+      ethChangePct: ethChange || null,
       sources,
     };
   }

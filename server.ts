@@ -408,7 +408,6 @@ async function startServer() {
     );
 
     const mergedData = hasLiveData ? {
-      ...EMERGENCY_DEMO_DATA,
       ...geminiData,
       ...directApiData,
     } : null;

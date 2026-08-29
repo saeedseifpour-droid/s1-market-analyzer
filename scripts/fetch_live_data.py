@@ -38,7 +38,7 @@ def fetch_nobitex_tether():
                 }
     except Exception as e:
         print(f"⚠️ Nobitex API notice: {e}", file=sys.stderr)
-    return {'usdt_toman': '199,800', 'usdt_num': 199800, 'source': 'S1 Baseline'}
+    return None
 
 def fetch_crypto_prices():
     """Fetches BTC & ETH live prices from Binance with CoinGecko fallback."""
@@ -119,6 +119,9 @@ def fetch_yahoo_commodities():
 def build_s1_snapshot():
     """Executes Layer 1 and compiles the verified S1 snapshot."""
     nobitex = fetch_nobitex_tether()
+    if nobitex is None:
+        print("FATAL: Could not fetch live USDT rate from Nobitex. Aborting.", file=sys.stderr)
+        sys.exit(1)
     crypto = fetch_crypto_prices()
     fng = fetch_fear_and_greed()
     yahoo = fetch_yahoo_commodities()
@@ -147,8 +150,8 @@ def build_s1_snapshot():
         'dxy_index': yahoo['dxy'],
         'vix_index': yahoo['vix'],
         'crypto_fear_greed': fng,
-        'tse_index': '6,386,576',
-        'tse_index_change_pct': '+2.61%',
+        'tse_index': None,
+        'tse_index_change_pct': None,
         'retail_volume': '54,200 میلیارد تومان',
         'real_money_flow': '+1,480 میلیارد تومان',
     }
