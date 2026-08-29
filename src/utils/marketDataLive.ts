@@ -69,7 +69,7 @@ export async function fetchLiveMarketDataViaGemini(
             { category: 'بورس و سهام', source: 'TSETMC / دیتابورس', status: 'تایید زنده' },
             { category: 'اقتصاد کلان', source: 'بانک مرکزی CBI / فدرال رزرو', status: 'تایید زنده' },
           ],
-          isAiGrounded: true,
+          isAiGrounded: !!json.isGrounded,
         };
       }
     }
@@ -87,7 +87,7 @@ export async function fetchLiveMarketDataViaGemini(
       auditReport: validated.auditReport,
       extractedSummary: `داده‌های مالی امروز (${dateDetails.verbose}) با موفقیت از طریق APIهای مستقیم نوبیتکس، بایننس و یاهو فایننس تایید شدند.`,
       sourceBreakdown: snapshot.sourcesUsed.map((s) => ({ category: 'داده مستقیم', source: s, status: 'تایید برخط' })),
-      isAiGrounded: true,
+      isAiGrounded: !!snapshot.isDeterministic,
     };
   } catch (e) {
     // 3. Fallback to Validation Core
@@ -134,62 +134,65 @@ export async function fetchSingleDomainLive(
     if (res.ok) {
       const json = await res.json();
       if (json.success && json.data) {
-        // Extract only the fields belonging to this domain
+        // Extract only the fields belonging to this domain, keeping them null/undefined if live data is missing
         let domainSpecificInputs: Record<string, any> = {};
 
         if (domain === 'crypto') {
           domainSpecificInputs = {
-            btcPrice: json.data.btcPriceUsd || '79,630',
-            btcYesterday: json.data.btcYesterday || '78,450',
-            btcChangePct: json.data.btcChangePct || '+1.50%',
-            ethPrice: json.data.ethPriceUsd || '2,620',
-            ethChangePct: json.data.ethChangePct || '+1.85%',
+            btcPrice: json.data.btcPriceUsd || null,
+            btcYesterday: json.data.btcYesterday || null,
+            btcChangePct: json.data.btcChangePct || null,
+            ethPrice: json.data.ethPriceUsd || null,
+            ethChangePct: json.data.ethChangePct || null,
           };
         } else if (domain === 'gold') {
           domainSpecificInputs = {
-            goldOunce: json.data.goldOunceUsd || '4,598',
-            ounceYesterday: json.data.ounceYesterday || '4,618',
-            ounceChangePct: json.data.ounceChangePct || '-0.43%',
-            gold18k: json.data.gold18kGramToman || '21,677,400',
-            gold18kYesterday: json.data.gold18kYesterday || '21,410,000',
-            gold18kChangePct: json.data.gold18kChangePct || '+1.25%',
-            sekeEmami: json.data.goldCoinEmamiToman || '216,000,000',
-            coinBubble: json.data.coinBubblePct || '2.1%',
+            goldOunce: json.data.goldOunceUsd || null,
+            ounceYesterday: json.data.ounceYesterday || null,
+            ounceChangePct: json.data.ounceChangePct || null,
+            gold18k: json.data.gold18kGramToman || null,
+            gold18kYesterday: json.data.gold18kYesterday || null,
+            gold18kChangePct: json.data.gold18kChangePct || null,
+            sekeEmami: json.data.goldCoinEmamiToman || null,
+            coinBubble: json.data.coinBubblePct || null,
           };
         } else if (domain === 'tether') {
           domainSpecificInputs = {
-            usdt: json.data.usdtToman || '199,800',
-            usdtYesterday: json.data.usdtYesterday || '199,120',
-            usdtChangePct: json.data.usdtChangePct || '+0.34%',
-            usdFree: json.data.usdFreeToman || '200,500',
-            usdYesterday: json.data.usdYesterday || '199,500',
-            usdChangePct: json.data.usdChangePct || '+0.50%',
+            usdt: json.data.usdtToman || null,
+            usdtYesterday: json.data.usdtYesterday || null,
+            usdtChangePct: json.data.usdtChangePct || null,
+            usdFree: json.data.usdFreeToman || null,
+            usdYesterday: json.data.usdYesterday || null,
+            usdChangePct: json.data.usdChangePct || null,
           };
         } else if (domain === 'bourse') {
           domainSpecificInputs = {
-            tseIndex: json.data.tseIndex || '6,386,576',
-            tseYesterday: json.data.tseYesterday || '6,223,879',
-            tseIndexChangePct: json.data.tseIndexChangePct || '+2.61%',
-            tseEqualWeight: json.data.tseEqualWeight || '1,802,773',
-            retailVolume: json.data.tseRetailVolumeBillionToman || '54,200',
-            realMoneyFlow: json.data.tseRealMoneyFlowBillionToman || '+1,480',
-            section5_afranFund: json.data.section5_afranFund,
-            section6_ayarFund: json.data.section6_ayarFund,
-            section7_khebarganFund: json.data.section7_khebarganFund,
-            section8_tavanFund: json.data.section8_tavanFund,
+            tseIndex: json.data.tseIndex || null,
+            tseYesterday: json.data.tseYesterday || null,
+            tseIndexChangePct: json.data.tseIndexChangePct || null,
+            tseEqualWeight: json.data.tseEqualWeight || null,
+            retailVolume: json.data.tseRetailVolumeBillionToman || null,
+            realMoneyFlow: json.data.tseRealMoneyFlowBillionToman || null,
+            section5_afranFund: json.data.section5_afranFund || null,
+            section6_ayarFund: json.data.section6_ayarFund || null,
+            section7_khebarganFund: json.data.section7_khebarganFund || null,
+            section8_tavanFund: json.data.section8_tavanFund || null,
           };
         }
 
+        const isLiveResult = json.extractionStatus === 'REALTIME_VERIFIED';
         const validated = runS1ValidationCore(domainSpecificInputs, currentInputs, current13Sections);
         return {
           updatedInputs: validated.validatedMetrics,
           validated13Sections: validated.validated13Sections,
           auditReport: validated.auditReport,
-          extractedSummary: `شاخص‌های حوزه ${domain} با موفقیت استعلام مجدد و همگام‌سازی شدند.`,
+          extractedSummary: isLiveResult
+            ? `شاخص‌های حوزه ${domain} با موفقیت استعلام مجدد و همگام‌سازی شدند.`
+            : `توجه: عدم دسترسی به داده زنده برای ${domain}. سیستم با بیس‌لاین اضطراری همگام شد.`,
           sourceBreakdown: [
-            { category: domain, source: 'استعلام مجدد زنده', status: 'بروزرسانی شد' },
+            { category: domain, source: isLiveResult ? 'استعلام مجدد زنده' : 'پایگاه اضطراری S1', status: isLiveResult ? 'بروزرسانی شد' : 'دمو/آفلاین' },
           ],
-          isAiGrounded: true,
+          isAiGrounded: isLiveResult,
         };
       }
     }

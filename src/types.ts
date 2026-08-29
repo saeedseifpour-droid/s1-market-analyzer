@@ -365,6 +365,7 @@ export interface StandardDailyInput13Sections {
     dayOfWeek: string;
     updateTime: string;
     s1EngineVersion: string;
+    isLive?: boolean;
   };
   section1_iranMacro: {
     usdFree: string;

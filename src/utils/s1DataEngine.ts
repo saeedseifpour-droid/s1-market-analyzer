@@ -21,6 +21,9 @@ import { cleanNumericValue, formatPersianNumber, runS1ValidationCore } from './s
 export interface DataFreshnessStatus {
   isFresh: boolean;
   isStale: boolean;
+  isUnavailable: boolean;
+  isInvalid: boolean;
+  status: 'VERIFIED' | 'STALE' | 'UNAVAILABLE' | 'INVALID';
   todayJalali: string;
   todayVerbose: string;
   dataDateJalali: string;
@@ -40,9 +43,14 @@ export interface DataFreshnessStatus {
 const STORAGE_KEY = 'S1_UNIFIED_STORAGE_V1_3';
 
 /**
- * Check whether market data / inputs are fresh for today or expired
+ * Check whether market data / inputs are fresh for today or expired/unavailable/invalid
  */
-export function checkDataFreshness(dataDateJalali?: string, lastUpdatedTime?: string): DataFreshnessStatus {
+export function checkDataFreshness(
+  dataDateJalali?: string,
+  lastUpdatedTime?: string,
+  isLive?: boolean,
+  isInvalid?: boolean
+): DataFreshnessStatus {
   const todayDetails = getLiveJalaliDetails(0);
   const todayJalali = todayDetails.jalaliStandard; // e.g. "1405/06/03"
   const todayVerbose = todayDetails.verbose;
@@ -74,8 +82,18 @@ export function checkDataFreshness(dataDateJalali?: string, lastUpdatedTime?: st
     daysDifference = isSameDay ? 0 : 1;
   }
 
-  const isFresh = isSameDay;
-  const isStale = !isFresh || daysDifference > 0;
+  // 1. Determine status
+  let status: 'VERIFIED' | 'STALE' | 'UNAVAILABLE' | 'INVALID' = 'UNAVAILABLE';
+
+  if (isInvalid) {
+    status = 'INVALID';
+  } else if (!isLive) {
+    status = 'UNAVAILABLE';
+  } else if (!isSameDay || daysDifference > 0) {
+    status = 'STALE';
+  } else {
+    status = 'VERIFIED';
+  }
 
   let label = '🟢 داده‌های زنده و به‌روز امروز';
   let color: 'green' | 'yellow' | 'red' = 'green';
@@ -83,17 +101,32 @@ export function checkDataFreshness(dataDateJalali?: string, lastUpdatedTime?: st
   let warningMessageFa: string | undefined = undefined;
   let errorBannerFa: string | undefined = undefined;
 
-  if (isStale) {
+  if (status === 'UNAVAILABLE') {
     color = 'red';
     trafficIcon = '🔴';
-    label = `🔴 داده‌های منقضی (${daysDifference > 0 ? `${daysDifference} روز قبل` : 'قبلی'})`;
-    warningMessageFa = `توجه: اطلاعات مالی ثبت‌شده مربوط به تاریخ ${toPersianDigits(normalizedDataDate)} است و متعلق به پایش امروز (${todayVerbose}) نیست.`;
-    errorBannerFa = `⛔ هشدار انقضای داده‌های ورودی S1: داده‌های پایش ثبت‌شده مربوط به ${daysDifference > 0 ? `${toPersianDigits(daysDifference)} روز قبل` : 'تاریخ گذشته'} (${toPersianDigits(normalizedDataDate)}) است و منقضی شده است. طبق ماده ۴ منشور مدیریت سرمایه و ریسک S1، صدور هرگونه سیگنال، تخصیص سبد و تصمیم معاملاتی بر پایه اطلاعات قدیمی و نامعتبر اکیداً ممنوع و فاقد اعتبار تحلیلی است. لطفاً ورودی‌های امروز (${todayVerbose}) را با کلیک روی استخراج زنده یا ثبت دستی به‌روزرسانی نمایید.`;
+    label = '🔴 عدم وجود داده زنده (غیرقابل استفاده)';
+    warningMessageFa = `توجه: هیچ داده زنده معتبری برای امروز ثبت نشده و مقادیر نمایش‌داده‌شده صرفاً دمو اضطراری هستند.`;
+    errorBannerFa = `⛔ هشدار عدم وجود داده‌های زنده S1: در حال حاضر هیچ داده‌ی واقعی و معتبری برای امروز (${todayVerbose}) دریافت یا تایید نشده است. طبق ماده ۴ منشور ریسک S1، صدور هرگونه سیگنال معاملاتی یا بازتوازن سبد تا زمان اجرای موفقیت‌آمیز استخراج زنده کاملاً متوقف گردیده است. لطفا بر روی دکمه "استخراج زنده" کلیک نمایید.`;
+  } else if (status === 'STALE') {
+    color = 'yellow';
+    trafficIcon = '🟡';
+    label = `🟡 داده‌های منقضی (${daysDifference > 0 ? `${daysDifference} روز قبل` : 'تاریخ گذشته'})`;
+    warningMessageFa = `توجه: اطلاعات مالی پایش مربوط به تاریخ ${toPersianDigits(normalizedDataDate)} است و متعلق به امروز (${todayVerbose}) نیست.`;
+    errorBannerFa = `⚠️ هشدار انقضای داده‌های ورودی S1: داده‌های پایش ثبت‌شده مربوط به ${daysDifference > 0 ? `${toPersianDigits(daysDifference)} روز قبل` : 'تاریخ گذشته'} (${toPersianDigits(normalizedDataDate)}) است و منقضی شده است. طبق ماده ۴ منشور ریسک S1، صدور هرگونه سیگنال بر پایه اطلاعات منقضی‌شده معتبر نبوده و تخصیص جدید سبد معاملاتی مسدود می‌باشد. لطفا دکمه "استخراج زنده" را جهت به‌روزرسانی کلیک نمایید.`;
+  } else if (status === 'INVALID') {
+    color = 'red';
+    trafficIcon = '🔴';
+    label = '🔴 خطا در اعتبارسنجی ریاضی (داده نامعتبر)';
+    warningMessageFa = `توجه: داده‌های دریافتی با قوانین آربیتراژ و همگرایی ریاضی سیستم S1 همخوانی ندارند.`;
+    errorBannerFa = `⛔ خطا در اعتبارسنجی ریاضی S1: مقادیر وارد شده یا استخراج‌شده به دلیل انحراف شدید از نسبت‌های استاندارد (آربیتراژ دلار/تتر یا فرمول ارزش ذاتی طلا و سکه) توسط هسته اعتبارسنجی رد شدند. صدور سیگنال تا اصلاح کامل مغایرت‌ها متوقف شده است.`;
   }
 
   return {
-    isFresh,
-    isStale,
+    isFresh: status === 'VERIFIED',
+    isStale: status === 'STALE',
+    isUnavailable: status === 'UNAVAILABLE',
+    isInvalid: status === 'INVALID',
+    status,
     todayJalali,
     todayVerbose,
     dataDateJalali: normalizedDataDate,
@@ -125,6 +158,7 @@ export function getUnifiedBaseline13Sections(): StandardDailyInput13Sections {
       dayOfWeek: details.dayOfWeek,
       updateTime: timeNow,
       s1EngineVersion: '1.3',
+      isLive: false,
     },
     section1_iranMacro: {
       usdFree: '200,500 تومان',
@@ -646,16 +680,33 @@ export function recomputeS1Engine(
     summary = 'افزایش نااطمینانی‌های سیستماتیک و اصلاح شاخص‌ها. تخصیص حداکثری به صندوق‌های درآمد ثابت توصیه می‌گردد.';
   }
 
+  const freshnessStatus = checkDataFreshness(
+    sections13?.metadata?.jalaliDate,
+    undefined,
+    sections13?.metadata?.isLive
+  );
+
+  const shouldBlockSignal = freshnessStatus.status !== 'VERIFIED';
+
   const updatedSignal: SystemS1Signal = {
     ...currentSignal,
-    overallScore: compositeScore,
-    actionTitle: action,
-    summaryText: summary,
+    overallScore: shouldBlockSignal ? 0 : compositeScore,
+    actionTitle: shouldBlockSignal
+      ? freshnessStatus.status === 'UNAVAILABLE'
+        ? 'عدم امکان صدور سیگنال (داده‌های ناموجود)'
+        : freshnessStatus.status === 'INVALID'
+        ? 'عدم امکان صدور سیگنال (داده‌های نامعتبر)'
+        : 'عدم امکان صدور سیگنال (داده‌های منقضی)'
+      : action,
+    summaryText: shouldBlockSignal
+      ? freshnessStatus.errorBannerFa || 'طبق ماده ۴ منشور مدیریت ریسک S1، صدور هرگونه سیگنال تا زمان به‌روزرسانی کامل داده‌های امروز متوقف شده است.'
+      : summary,
     lastUpdatedJalali: `${dateDetails.jalaliStandard} ${timeNow}`,
-    confidenceScore: 9,
+    confidenceScore: shouldBlockSignal ? 0 : 9,
     dataQualityScore: 41,
     totalMetricsCount: 41,
     activeMetricsCount: 41,
+    isLive: !shouldBlockSignal,
   };
 
   const validationResult = runS1ValidationCore(inputs, sections13);
@@ -714,7 +765,7 @@ export function resetToFreshMarketState(): {
   const baseline13 = getUnifiedBaseline13Sections();
   const baselineInputs = build41MetricsFrom13Sections(baseline13);
   const baselineEngine = computeS1MarketScoresAndSignal(baselineInputs, baseline13);
-  const freshness = checkDataFreshness(baseline13.metadata.jalaliDate);
+  const freshness = checkDataFreshness(baseline13.metadata.jalaliDate, undefined, baseline13.metadata.isLive);
 
   persistUnifiedState(baseline13, baselineInputs, baselineEngine.signal);
 
@@ -750,13 +801,14 @@ export function loadUnifiedState(): {
       const parsed = JSON.parse(raw);
       if (parsed && parsed.sections13 && parsed.inputs) {
         const storedDate = parsed.jalaliDate || parsed.sections13?.metadata?.jalaliDate;
-        const freshness = checkDataFreshness(storedDate);
+        const isLive = parsed.sections13?.metadata?.isLive || false;
+        const freshness = checkDataFreshness(storedDate, undefined, isLive);
         const engineResult = computeS1MarketScoresAndSignal(parsed.inputs, parsed.sections13, parsed.signal);
 
         return {
           daily13Sections: parsed.sections13,
           inputs: parsed.inputs,
-          signal: parsed.signal || engineResult.signal,
+          signal: engineResult.signal,
           marketScores: engineResult.marketScores,
           freshness,
           auditReport: engineResult.auditReport,
@@ -768,7 +820,7 @@ export function loadUnifiedState(): {
     console.warn('Failed to parse stored unified state:', err);
   }
 
-  const freshness = checkDataFreshness(baseline13.metadata.jalaliDate);
+  const freshness = checkDataFreshness(baseline13.metadata.jalaliDate, undefined, baseline13.metadata.isLive);
 
   return {
     daily13Sections: baseline13,

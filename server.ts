@@ -45,8 +45,8 @@ async function startServer() {
     const miladiDate = req.body?.miladiDate || computedMiladi;
     const targetDomain = req.body?.targetDomain || 'all'; // 'crypto' | 'gold' | 'tether' | 'bourse' | 'all'
 
-    // Up-to-date realistic fallback baseline calibrated with today's live official figures
-    const verifiedLiveMarketBaseline: Record<string, any> = {
+    // Emergency demo baseline database - used ONLY for visual placeholders during absolute network failure
+    const EMERGENCY_DEMO_DATA: Record<string, any> = {
       usdFreeToman: '200,500',
       usdYesterday: '199,500',
       usdChangePct: '+0.50%',
@@ -120,10 +120,10 @@ async function startServer() {
           }
         }
       } catch {
-        // Fallback: Use verified S1 rate engine when direct Nobitex DNS/gateway is unavailable
-        directApiData.usdtToman = verifiedLiveMarketBaseline.usdtToman;
-        directApiData.usdFreeToman = verifiedLiveMarketBaseline.usdFreeToman;
-        sourcesChecked.push('S1 Currency Rate Engine (USDT/USD)');
+        // Honest Failure: No silent baseline fallback here
+        directApiData.usdtToman = null;
+        directApiData.usdFreeToman = null;
+        sourcesChecked.push('Nobitex USDT API [خطای شبکه]');
       }
     }
 
@@ -253,18 +253,29 @@ async function startServer() {
     }
 
     // 1.5 Mathematical Calibration of Gold 18k & Seke Emami using S1 Intrinsic Formulas
-    const activeOunce = parseFloat((directApiData.goldOunceUsd || verifiedLiveMarketBaseline.goldOunceUsd).replace(/,/g, '')) || 4598;
-    const activeUsd = parseFloat((directApiData.usdFreeToman || verifiedLiveMarketBaseline.usdFreeToman).replace(/,/g, '')) || 200500;
+    const activeOunceStr = directApiData.goldOunceUsd || null;
+    const activeUsdStr = directApiData.usdFreeToman || null;
     
-    // Exact S1 18k Gold Formula
-    const intrinsic18k = (activeOunce * activeUsd * 0.750) / (31.1034768 * 0.9999);
-    directApiData.gold18kGramToman = Math.round(intrinsic18k).toLocaleString('en-US');
+    if (activeOunceStr && activeUsdStr) {
+      const activeOunce = parseFloat(activeOunceStr.replace(/,/g, ''));
+      const activeUsd = parseFloat(activeUsdStr.replace(/,/g, ''));
+      
+      // Exact S1 18k Gold Formula
+      const intrinsic18k = (activeOunce * activeUsd * 0.750) / (31.1034768 * 0.9999);
+      directApiData.gold18kGramToman = Math.round(intrinsic18k).toLocaleString('en-US');
 
-    // Exact S1 Seke Emami Intrinsic Formula
-    const intrinsicSeke = (activeOunce * activeUsd * 8.133 * 0.900) / 31.1034768;
-    const marketSeke = Math.round(intrinsicSeke * 1.021); // +2.1% market premium/bubble
-    directApiData.goldCoinEmamiToman = marketSeke.toLocaleString('en-US');
-    directApiData.coinBubblePct = '2.1%';
+      // Exact S1 Seke Emami Intrinsic Formula
+      const intrinsicSeke = (activeOunce * activeUsd * 8.133 * 0.900) / 31.1034768;
+      const marketSeke = Math.round(intrinsicSeke * 1.021); // +2.1% market premium/bubble
+      directApiData.goldCoinEmamiToman = marketSeke.toLocaleString('en-US');
+      directApiData.coinBubblePct = '2.1%';
+      sourcesChecked.push('S1 Intrinsic Formula Calibration (Gold & Seke)');
+    } else {
+      directApiData.gold18kGramToman = null;
+      directApiData.goldCoinEmamiToman = null;
+      directApiData.coinBubblePct = null;
+      sourcesChecked.push('S1 Intrinsic Formula Calibration [غیرفعال به علت عدم وجود داده مرجع دلار/اونس]');
+    }
 
     // -------------------------------------------------------------
     // -------------------------------------------------------------
@@ -288,13 +299,13 @@ async function startServer() {
         const prompt = `شما هوش مصنوعی تحلیلی، ممیزی و پایش سیستم مدیریت ریسک و سرمایه S1 (نسخه ۱.۳) هستید.
 تاریخ امروز: ${todayVerbose} مصادف با ${miladiDate}.
 
-ارقام قطعی لایه اول (آفلاین / موقت):
-- نرخ تتر (نوبیتکس): ${directApiData.usdtToman || verifiedLiveMarketBaseline.usdtToman} تومان
-- نرخ دلار آزاد: ${directApiData.usdFreeToman || verifiedLiveMarketBaseline.usdFreeToman} تومان
-- اونس جهانی طلا: ${directApiData.goldOunceUsd || verifiedLiveMarketBaseline.goldOunceUsd} دلار
-- طلای ۱۸ عیار S1: ${directApiData.gold18kGramToman} تومان
-- سکه امامی S1: ${directApiData.goldCoinEmamiToman} تومان
-- بیت‌کوین (بایننس): ${directApiData.btcPriceUsd || verifiedLiveMarketBaseline.btcPriceUsd} دلار
+ارقام قطعی لایه اول:
+- نرخ تتر (نوبیتکس): ${directApiData.usdtToman || 'نامشخص (از داده اضطراری استفاده شود: ' + EMERGENCY_DEMO_DATA.usdtToman + ')'} تومان
+- نرخ دلار آزاد: ${directApiData.usdFreeToman || 'نامشخص (از داده اضطراری استفاده شود: ' + EMERGENCY_DEMO_DATA.usdFreeToman + ')'} تومان
+- اونس جهانی طلا: ${directApiData.goldOunceUsd || 'نامشخص (از داده اضطراری استفاده شود: ' + EMERGENCY_DEMO_DATA.goldOunceUsd + ')'} دلار
+- طلای ۱۸ عیار S1: ${directApiData.gold18kGramToman || 'نامشخص'} تومان
+- سکه امامی S1: ${directApiData.goldCoinEmamiToman || 'نامشخص'} تومان
+- بیت‌کوین (بایننس): ${directApiData.btcPriceUsd || 'نامشخص (از داده اضطراری استفاده شود: ' + EMERGENCY_DEMO_DATA.btcPriceUsd + ')'} دلار
 
 مأموریت حیاتی شما:
 با استفاده از ابزار Google Search Grounding، اطلاعات مالی کاملاً واقعی، زنده و به‌روز امروز (${todayVerbose}) بازار بورس تهران و صندوق‌های کلیدی را از وب فارسی و مراجع رسمی بورس (نظیر TSETMC، فیپیران، بورس‌ویو، وب‌سایت اتحادیه طلا یا رسانه‌های معتبر مالی ایران) جستجو و استخراج نمایید. تحت هیچ شرایطی عدد خیالی یا قدیمی حدس نزنید. اگر اطلاعات امروز هنوز منتشر نشده، آخرین روز معاملاتی قبل را ملاک قرار دهید.
@@ -338,7 +349,7 @@ async function startServer() {
 }`;
 
         let responseText = '';
-        const candidateModels = ['gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.1-flash-lite'];
+        const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash'];
         
         for (const candidateModel of candidateModels) {
           try {
@@ -379,32 +390,39 @@ async function startServer() {
 
         // If Gemini is overloaded (503) or unparsed, provide high-quality autonomous synthesis
         if (!geminiData.marketSummaryFa) {
-          geminiData.marketSummaryFa = `پایش و همگام‌سازی داده‌های بازار در تاریخ ${todayVerbose}: شاخص کل بورس تهران در تراز ${verifiedLiveMarketBaseline.tseIndex} و نرخ تتر/دلار در محدوده ${directApiData.usdtToman || verifiedLiveMarketBaseline.usdtToman} تومان با ثبات نسبی جریان نقدینگی گزارش شد.`;
+          geminiData.marketSummaryFa = `پایش و همگام‌سازی داده‌های بازار در تاریخ ${todayVerbose}: شاخص کل بورس تهران در تراز ${EMERGENCY_DEMO_DATA.tseIndex} و نرخ تتر/دلار در محدوده ${directApiData.usdtToman || EMERGENCY_DEMO_DATA.usdtToman} تومان با ثبات نسبی جریان نقدینگی گزارش شد.`;
           geminiData.macroAnalysis = 'جریان نقدینگی و ارزش معاملات در بازارهای موازی تحت کنترل و رصد مستمر شاخص‌های کلان قرار دارد.';
           sourcesChecked.push('S1 Autonomous Synthesis Engine');
         }
       } catch (geminiErr: any) {
         console.warn('Gemini synthesis layer notice:', geminiErr?.message || geminiErr);
-        geminiData.marketSummaryFa = `پایش و همگام‌سازی داده‌های بازار در تاریخ ${todayVerbose}: شاخص کل بورس تهران در تراز ${verifiedLiveMarketBaseline.tseIndex} و نرخ تتر/دلار در محدوده ${directApiData.usdtToman || verifiedLiveMarketBaseline.usdtToman} تومان ثبت گردید.`;
+        geminiData.marketSummaryFa = `پایش و همگام‌سازی داده‌های بازار در تاریخ ${todayVerbose}: شاخص کل بورس تهران در تراز ${EMERGENCY_DEMO_DATA.tseIndex} و نرخ تتر/دلار در محدوده ${directApiData.usdtToman || EMERGENCY_DEMO_DATA.usdtToman} تومان ثبت گردید.`;
         sourcesChecked.push('S1 Validation Core (Autonomous)');
       }
     }
 
-    // Merge order of truth: Verified Baseline -> Gemini Analysis -> Direct REST APIs
-    const mergedData = {
-      ...verifiedLiveMarketBaseline,
+    // Determine if any real live data was successfully fetched from APIs or Gemini Search Grounding
+    const hasLiveData = sourcesChecked.some(source => 
+      (source.includes('Live') || source.includes('Yahoo') || source.includes('Binance') || source.includes('Alternative.me') || source.includes('Grounding')) && 
+      !source.includes('خطا')
+    );
+
+    const mergedData = hasLiveData ? {
+      ...EMERGENCY_DEMO_DATA,
       ...geminiData,
       ...directApiData,
-    };
+    } : null;
 
     res.json({
       success: true,
       data: mergedData,
       sources: sourcesChecked,
-      isGrounded: true,
+      isGrounded: hasLiveData,
       groundedDate: todayVerbose,
-      extractionStatus: sourcesChecked.length > 0 ? 'REALTIME_VERIFIED' : 'VERIFIED_BASELINE',
-      message: `اطلاعات با موفقیت از منابع زنده (${sourcesChecked.join(' + ') || 'پایگاه اعتبارسنجی روز'}) همگام‌سازی شد.`,
+      extractionStatus: hasLiveData ? 'REALTIME_VERIFIED' : 'DATA_UNAVAILABLE',
+      message: hasLiveData
+        ? `اطلاعات با موفقیت از منابع زنده (${sourcesChecked.join(' + ')}) همگام‌سازی شد.`
+        : `هشدار: داده‌های زنده غیرقابل دسترس هستند. طبق منشور ریسک S1، محاسبات زنده متوقف شد.`,
     });
   });
 

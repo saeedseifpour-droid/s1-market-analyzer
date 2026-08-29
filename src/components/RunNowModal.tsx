@@ -71,6 +71,7 @@ export const RunNowModal: React.FC<RunNowModalProps> = ({
   const [auditReport, setAuditReport] = useState<ValidationAuditReport | null>(null);
   const [showFullDetails, setShowFullDetails] = useState<boolean>(false);
   const [isSourceMapOpen, setIsSourceMapOpen] = useState<boolean>(false);
+  const [isLiveResult, setIsLiveResult] = useState<boolean>(false);
 
   // Field-specific live refresh and inline edit states
   const [loadingDomain, setLoadingDomain] = useState<'crypto' | 'gold' | 'tether' | 'bourse' | null>(null);
@@ -131,6 +132,7 @@ export const RunNowModal: React.FC<RunNowModalProps> = ({
       setExtractedInputs(result.updatedInputs);
       setExtracted13Sections(result.validated13Sections);
       setAuditReport(result.auditReport);
+      setIsLiveResult(result.isAiGrounded);
     } catch (err) {
       console.warn('Live extraction fallback:', err);
     } finally {
@@ -150,6 +152,7 @@ export const RunNowModal: React.FC<RunNowModalProps> = ({
       setExtractedInputs(result.updatedInputs);
       setExtracted13Sections(result.validated13Sections);
       setAuditReport(result.auditReport);
+      setIsLiveResult(result.isAiGrounded);
       setUpdatedFields((prev) => ({ ...prev, [domain]: 'searched' }));
     } catch (err) {
       console.warn(`Error refreshing domain ${domain}:`, err);
@@ -218,6 +221,7 @@ export const RunNowModal: React.FC<RunNowModalProps> = ({
       setLoadingDomain(null);
       setEditingDomain(null);
       setUpdatedFields({});
+      setIsLiveResult(current13Sections?.metadata?.isLive || false);
     }
   }, [isOpen, inputs, current13Sections]);
 
@@ -230,6 +234,7 @@ export const RunNowModal: React.FC<RunNowModalProps> = ({
     lastUpdatedJalali: nowJalali,
     confidenceScore: 10,
     dataQualityScore: 41,
+    isLive: isLiveResult,
   };
 
   // Spot benchmarks extracted for easy human verification

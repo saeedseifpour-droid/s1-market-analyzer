@@ -93,7 +93,11 @@ export default function App() {
   });
 
   // Dynamic Data Freshness Status
-  const freshnessStatus = checkDataFreshness(daily13Sections?.metadata?.jalaliDate || signal.lastUpdatedJalali);
+  const freshnessStatus = checkDataFreshness(
+    daily13Sections?.metadata?.jalaliDate || signal.lastUpdatedJalali,
+    undefined,
+    daily13Sections?.metadata?.isLive || signal?.isLive
+  );
 
   // Automated 20:00 (8:00 PM) Daily 13-Section JSON Logging Routine
   useEffect(() => {
@@ -301,90 +305,16 @@ export default function App() {
   };
 
   // Re-calculate engine when inputs change
-  const handleRecalculateEngine = (updatedInputs: InputMetric[]) => {
-    // Compute average score contributions per category
-    const bourseInputs = updatedInputs.filter((i) => i.category === 'bourse');
-    const goldInputs = updatedInputs.filter((i) => i.category === 'gold');
-    const cryptoInputs = updatedInputs.filter((i) => i.category === 'crypto');
-    const forexInputs = updatedInputs.filter((i) => i.category === 'forex');
+  const handleRecalculateEngine = (updatedInputs: InputMetric[], sections?: StandardDailyInput13Sections) => {
+    const finalSections = sections || daily13Sections;
+    const engineResult = computeS1MarketScoresAndSignal(updatedInputs, finalSections, signal);
 
-    const avgBourse = Math.round(
-      (bourseInputs.reduce((acc, i) => acc + i.scoreContribution, 0) / (bourseInputs.length * 10)) * 100
-    );
-    const avgGold = Math.round(
-      (goldInputs.reduce((acc, i) => acc + i.scoreContribution, 0) / (goldInputs.length * 10)) * 100
-    );
-    const avgCrypto = Math.round(
-      (cryptoInputs.reduce((acc, i) => acc + i.scoreContribution, 0) / (cryptoInputs.length * 10)) * 100
-    );
-    const avgForex = Math.round(
-      (forexInputs.reduce((acc, i) => acc + i.scoreContribution, 0) / (forexInputs.length * 10)) * 100
-    );
-
-    const updatedMarkets = marketScores.map((m) => {
-      if (m.id === 'bourse') {
-        const score = Math.max(10, Math.min(100, avgBourse));
-        return {
-          ...m,
-          score,
-          sentiment: (score >= 85 ? 'Strong Bull' : score >= 75 ? 'Bullish' : score >= 50 ? 'Neutral' : 'Bearish') as any,
-        };
-      }
-      if (m.id === 'gold') {
-        const score = Math.max(10, Math.min(100, avgGold));
-        return {
-          ...m,
-          score,
-          sentiment: (score >= 85 ? 'Strong Bull' : score >= 75 ? 'Bullish' : score >= 50 ? 'Neutral' : 'Bearish') as any,
-        };
-      }
-      if (m.id === 'btc') {
-        const score = Math.max(10, Math.min(100, avgCrypto));
-        return {
-          ...m,
-          score,
-          sentiment: (score >= 85 ? 'Strong Bull' : score >= 75 ? 'Bullish' : score >= 50 ? 'Neutral' : 'Bearish') as any,
-        };
-      }
-      if (m.id === 'usdt') {
-        const score = Math.max(10, Math.min(100, avgForex));
-        return {
-          ...m,
-          score,
-          sentiment: (score >= 85 ? 'Strong Bull' : score >= 75 ? 'Bullish' : score >= 50 ? 'Neutral' : 'Bearish') as any,
-        };
-      }
-      return m;
-    });
-
-    setMarketScores(updatedMarkets);
-
-    // Compute composite S1 index
-    const compositeScore = Math.round(
-      avgBourse * 0.3 + avgGold * 0.3 + avgForex * 0.25 + avgCrypto * 0.15
-    );
-
-    let action = 'خرید پله‌ای مجاز است';
-    let summary = 'با توجه به ثبات در بازار ارز و ورود جریان نقدینگی خرد به صندوق‌های طلا و درآمد ثابت، شرایط برای انباشت تدریجی دارایی‌های کم‌ریسک فراهم است.';
-
-    if (compositeScore >= 85) {
-      action = 'ورود پرقدرت و تهاجمی';
-      summary = 'جریان نقدینگی در تمام بازارها با قدرت فزاینده در حال صعود است. افزایش سهم صندوق‌های طلا و اهرمی توصیه می‌شود.';
-    } else if (compositeScore < 60) {
-      action = 'تثبیت سود و افزایش نقدینگی';
-      summary = 'افزایش نااطمینانی‌های سیستماتیک و اصلاح شاخص‌ها. تخصیص حداکثری به صندوق‌های درآمد ثابت توصیه می‌گردد.';
+    setMarketScores(engineResult.marketScores);
+    setSignal(engineResult.signal);
+    if (engineResult.auditReport) {
+      setAuditReport(engineResult.auditReport);
     }
-
-    const updatedSignal: SystemS1Signal = {
-      ...signal,
-      overallScore: compositeScore,
-      actionTitle: action,
-      summaryText: summary,
-      lastUpdatedJalali: `${getLiveJalaliDateString(0, true)} ${getTehranTimeString(true)}:00`,
-    };
-
-    setSignal(updatedSignal);
-    persistUnifiedState(updatedInputs, daily13Sections, updatedSignal);
+    persistUnifiedState(updatedInputs, finalSections, engineResult.signal);
   };
 
   const handleApplyFreshSignal = (
@@ -407,6 +337,7 @@ export default function App() {
         dayOfWeek: todayDetails.dayOfWeek,
         updateTime: timeNow,
         s1EngineVersion: '1.3',
+        isLive: !!freshSignal.isLive,
       },
     };
 
@@ -418,7 +349,7 @@ export default function App() {
     const updatedSignal: SystemS1Signal = {
       ...engineResult.signal,
       lastUpdatedJalali: nowJalali,
-      isLive: true,
+      isLive: !!freshSignal.isLive,
     };
 
     setSignal(updatedSignal);
@@ -568,18 +499,22 @@ export default function App() {
                 const updatedSignal: SystemS1Signal = {
                   ...signal,
                   lastUpdatedJalali: `${todayDetails.jalaliStandard} ${timeNow}`,
-                  isLive: true,
+                  isLive: result.isAiGrounded,
                 };
                 setSignal(updatedSignal);
                 setInputs(result.updatedInputs);
-                const finalSections = result.validated13Sections || daily13Sections;
-                if (result.validated13Sections) {
-                  setDaily13Sections(result.validated13Sections);
-                }
+                const finalSections = {
+                  ...(result.validated13Sections || daily13Sections),
+                  metadata: {
+                    ...(result.validated13Sections || daily13Sections).metadata,
+                    isLive: result.isAiGrounded,
+                  }
+                };
+                setDaily13Sections(finalSections);
                 if (result.auditReport) {
                   setAuditReport(result.auditReport);
                 }
-                handleRecalculateEngine(result.updatedInputs);
+                handleRecalculateEngine(result.updatedInputs, finalSections);
                 persistUnifiedState(result.updatedInputs, finalSections, updatedSignal);
               }}
             />

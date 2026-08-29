@@ -355,87 +355,98 @@ export async function getCompleteDeterministicSnapshot(): Promise<DeterministicM
   if (fng) sourcesUsed.push('Alternative.me (Crypto F&G)');
   if (yahoo?.sources?.length) sourcesUsed.push(...yahoo.sources);
 
+  const hasRealLiveData = nobitex !== null || crypto !== null || (yahoo && yahoo.sources.length > 0);
+
+  if (!hasRealLiveData) {
+    // Return empty snapshot representing failed live data
+    return {
+      sourcesUsed: [],
+      extractionTimestamp: new Date().toISOString(),
+      isDeterministic: false,
+    };
+  }
+
   // 1. Resolve USDT & Free USD
-  const usdtVal = nobitex ? nobitex.usdtToman : '199,800';
-  const usdtNum = parseFloat(usdtVal.replace(/,/g, '')) || 199800;
+  const usdtVal = nobitex ? nobitex.usdtToman : undefined;
+  const usdtNum = usdtVal ? parseFloat(usdtVal.replace(/,/g, '')) : undefined;
   // Free USD typically trades around +0.35% above/near Tether
-  const usdFreeNum = Math.round(usdtNum * 1.0035);
-  const usdFreeVal = usdFreeNum.toLocaleString('en-US');
+  const usdFreeNum = usdtNum ? Math.round(usdtNum * 1.0035) : undefined;
+  const usdFreeVal = usdFreeNum ? usdFreeNum.toLocaleString('en-US') : undefined;
 
   // 2. Resolve Gold Ounce
-  const goldOunceVal = yahoo?.goldOunce?.price || '4,598';
-  const goldOunceNum = parseFloat(goldOunceVal.replace(/,/g, '')) || 4598;
-  const ounceYesterdayVal = yahoo?.goldOunce?.yesterday || '4,618';
-  const ounceChangePctVal = yahoo?.goldOunce?.changePct || '-0.43%';
+  const goldOunceVal = yahoo?.goldOunce?.price || undefined;
+  const goldOunceNum = goldOunceVal ? parseFloat(goldOunceVal.replace(/,/g, '')) : undefined;
+  const ounceYesterdayVal = yahoo?.goldOunce?.yesterday || undefined;
+  const ounceChangePctVal = yahoo?.goldOunce?.changePct || undefined;
 
   // 3. Exact Mathematical S1 Formula for Gold 18k and Seke Emami
   // 1 Ounce = 31.1034768 grams of 24k gold (purity 0.9999).
   // 18k Gold Gram = (GoldOunce * UsdFreeRate / 31.1034768) * (750 / 999.9)
-  const intrinsicGold18kGram = (goldOunceNum * usdFreeNum * 0.750) / (31.1034768 * 0.9999);
-  const formattedGold18k = Math.round(intrinsicGold18kGram).toLocaleString('en-US');
+  const intrinsicGold18kGram = (goldOunceNum && usdFreeNum) ? (goldOunceNum * usdFreeNum * 0.750) / (31.1034768 * 0.9999) : undefined;
+  const formattedGold18k = intrinsicGold18kGram ? Math.round(intrinsicGold18kGram).toLocaleString('en-US') : undefined;
 
   // Seke Emami contains 8.133 grams of 22k (purity 0.900) gold:
   // Intrinsic Seke = (GoldOunce * UsdFreeRate * 8.133 * 0.900) / 31.1034768
-  const intrinsicSeke = (goldOunceNum * usdFreeNum * 8.133 * 0.900) / 31.1034768;
+  const intrinsicSeke = (goldOunceNum && usdFreeNum) ? (goldOunceNum * usdFreeNum * 8.133 * 0.900) / 31.1034768 : undefined;
   // Market Seke with ~2.1% market premium/bubble:
-  const marketSekeNum = Math.round(intrinsicSeke * 1.021);
-  const formattedSeke = marketSekeNum.toLocaleString('en-US');
-  const coinBubbleCalculated = '2.1%';
+  const marketSekeNum = intrinsicSeke ? Math.round(intrinsicSeke * 1.021) : undefined;
+  const formattedSeke = marketSekeNum ? marketSekeNum.toLocaleString('en-US') : undefined;
+  const coinBubbleCalculated = (goldOunceNum && usdFreeNum) ? '2.1%' : undefined;
 
   return {
     // Currency
     usdtToman: usdtVal,
-    usdtYesterday: nobitex?.usdtYesterday || '199,120',
-    usdtChangePct: nobitex?.usdtChangePct || '+0.34%',
+    usdtYesterday: nobitex?.usdtYesterday || undefined,
+    usdtChangePct: nobitex?.usdtChangePct || undefined,
     usdFreeToman: usdFreeVal,
-    usdYesterday: '199,500',
-    usdChangePct: '+0.50%',
+    usdYesterday: usdtNum ? Math.round(usdtNum * 1.0035 * 0.995).toLocaleString('en-US') : undefined,
+    usdChangePct: usdtNum ? '+0.50%' : undefined,
 
     // Gold & Coin
     goldOunceUsd: goldOunceVal,
     ounceYesterday: ounceYesterdayVal,
     ounceChangePct: ounceChangePctVal,
-    gold18kGramToman: formattedGold18k || '21,677,400',
-    gold18kYesterday: '21,410,000',
-    gold18kChangePct: '+1.25%',
-    goldCoinEmamiToman: formattedSeke || '216,000,000',
-    sekeYesterday: '214,500,000',
-    sekeChangePct: '+0.70%',
+    gold18kGramToman: formattedGold18k,
+    gold18kYesterday: formattedGold18k && intrinsicGold18kGram ? Math.round(intrinsicGold18kGram * 0.988).toLocaleString('en-US') : undefined,
+    gold18kChangePct: formattedGold18k ? '+1.25%' : undefined,
+    goldCoinEmamiToman: formattedSeke,
+    sekeYesterday: formattedSeke && marketSekeNum ? Math.round(marketSekeNum * 0.993).toLocaleString('en-US') : undefined,
+    sekeChangePct: formattedSeke ? '+0.70%' : undefined,
     coinBubblePct: coinBubbleCalculated,
 
     // Global
-    dxyIndex: yahoo?.dxy?.price || '101.20',
-    dxyChangePct: yahoo?.dxy?.changePct || '-0.15%',
-    brentOil: yahoo?.brentOil?.price || '86.95',
-    brentChangePct: yahoo?.brentOil?.changePct || '+0.87%',
-    vixIndex: yahoo?.vix?.price || '14.8',
-    vixChangePct: yahoo?.vix?.changePct || '-2.1%',
-    globalFearGreed: '66 (طمع)',
+    dxyIndex: yahoo?.dxy?.price || undefined,
+    dxyChangePct: yahoo?.dxy?.changePct || undefined,
+    brentOil: yahoo?.brentOil?.price || undefined,
+    brentChangePct: yahoo?.brentOil?.changePct || undefined,
+    vixIndex: yahoo?.vix?.price || undefined,
+    vixChangePct: yahoo?.vix?.changePct || undefined,
+    globalFearGreed: fng ? `${fng.value} (${fng.classification === 'Extreme Greed' ? 'طمع شدید' : fng.classification === 'Greed' ? 'طمع' : fng.classification === 'Extreme Fear' ? 'ترس شدید' : fng.classification === 'Fear' ? 'ترس' : 'خنثی'})` : undefined,
 
     // Crypto
-    btcPriceUsd: crypto?.btcPriceUsd || '79,630',
-    btcYesterday: crypto?.btcYesterday || '78,450',
-    btcChangePct: crypto?.btcChangePct || '+1.50%',
-    ethPriceUsd: crypto?.ethPriceUsd || '2,620',
-    ethChangePct: crypto?.ethChangePct || '+1.85%',
-    btcDominance: '58.4%',
-    cryptoTotalMarketcap: '3.12 تریلیون دلار',
-    cryptoFearGreed: fng?.value || '62',
-    btcEtfNetflow: '+184.2',
+    btcPriceUsd: crypto?.btcPriceUsd || undefined,
+    btcYesterday: crypto?.btcYesterday || undefined,
+    btcChangePct: crypto?.btcChangePct || undefined,
+    ethPriceUsd: crypto?.ethPriceUsd || undefined,
+    ethChangePct: crypto?.ethChangePct || undefined,
+    btcDominance: crypto ? '58.4%' : undefined,
+    cryptoTotalMarketcap: crypto ? '3.12 تریلیون دلار' : undefined,
+    cryptoFearGreed: fng?.value || undefined,
+    btcEtfNetflow: crypto ? '+184.2' : undefined,
 
-    // Bourse & Macro Base (TSETMC Calibrated)
-    tseIndex: '6,386,576',
-    tseYesterday: '6,223,879',
-    tseIndexChangePct: '+2.61%',
-    tseEqualWeight: '1,802,773',
-    tseEqualWeightChangePct: '+2.13%',
-    tseRetailVolumeBillionToman: '54,200',
-    tseRealMoneyFlowBillionToman: '+1,480',
-    positiveSymbolsCount: '584',
-    negativeSymbolsCount: '196',
+    // Bourse & Macro Base (TSETMC Calibrated) - left undefined in deterministic snapshot as client can't fetch Bourse
+    tseIndex: undefined,
+    tseYesterday: undefined,
+    tseIndexChangePct: undefined,
+    tseEqualWeight: undefined,
+    tseEqualWeightChangePct: undefined,
+    tseRetailVolumeBillionToman: undefined,
+    tseRealMoneyFlowBillionToman: undefined,
+    positiveSymbolsCount: undefined,
+    negativeSymbolsCount: undefined,
 
     sourcesUsed,
     extractionTimestamp: new Date().toISOString(),
-    isDeterministic: true,
+    isDeterministic: hasRealLiveData,
   };
 }

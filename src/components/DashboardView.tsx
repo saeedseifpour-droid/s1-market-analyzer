@@ -255,7 +255,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* S1 Data Freshness / Expiration Status Card */}
-      {freshnessStatus && freshnessStatus.isStale && (
+      {freshnessStatus && (freshnessStatus.isStale || freshnessStatus.isUnavailable || freshnessStatus.isInvalid) && (
         <div
           id="stale-data-warning-banner"
           className="bg-[#ef4444]/15 border-2 border-[#ef4444]/60 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in"
@@ -290,7 +290,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       )}
 
       {/* Fresh Data Success Bar if fresh */}
-      {freshnessStatus && !freshnessStatus.isStale && (
+      {freshnessStatus && freshnessStatus.isFresh && (
         <div className="bg-[#10b981]/10 border border-[#10b981]/30 rounded-xl px-4 py-2.5 flex items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2 text-[#10b981]">
             <ShieldCheck className="w-4 h-4" />

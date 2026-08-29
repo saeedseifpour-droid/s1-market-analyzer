@@ -57,6 +57,7 @@ export function getDefault13SectionsData(): StandardDailyInput13Sections {
       dayOfWeek: dayOfWeek,
       updateTime: timeNow,
       s1EngineVersion: '1.3',
+      isLive: false,
     },
     section1_iranMacro: {
       usdFree: '200,500 تومان',
@@ -483,6 +484,7 @@ export function runS1ValidationCore(
       dayOfWeek: todayDetails.dayOfWeek,
       updateTime: timeNow,
       s1EngineVersion: '1.3',
+      isLive: currentSections?.metadata?.isLive,
     },
     section1_iranMacro: {
       usdFree: rawInputs.usdFree || rawInputs.usdFreeToman ? `${formatPersianNumber(usdFreeNum)} تومان` : currentSections.section1_iranMacro.usdFree,

@@ -237,7 +237,7 @@ export const initialSignal: SystemS1Signal = {
     cashPct: 0,
   },
   lastUpdatedJalali: `${getLiveJalaliDateString(0, true)} ${getTehranTimeString(true)}:00`,
-  isLive: true,
+  isLive: false,
   overallScore: 81,
 };
 
